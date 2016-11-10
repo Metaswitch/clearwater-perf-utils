@@ -1,0 +1,6 @@
+[submodule "build-infra"]
+	path = build-infra
+	url = git@github.com:Metaswitch/clearwater-build-infra.git
+[submodule "sipp"]
+	path = sipp
+	url = git@github.com:SIPp/sipp.git
