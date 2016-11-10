@@ -40,6 +40,9 @@ import argparse
 SIPP_BIN = "/usr/share/clearwater/bin/sipp"
 SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
+REGISTER_CSV = "/tmp/registers.csv"
+INVITE_CSV = "/tmp/calls.csv"
+
 BHCA = 1.3
 REREG_PER_HOUR = 2
 
@@ -66,8 +69,6 @@ RPS = REREG_PER_HOUR * args.subscribers * args.multiplier / 3600
 REG_MAX = int(args.duration * 60 * RPS)
 CALL_MAX = int(args.duration * 60 * CPS)
 
-# Generate the CSV input files - one for REGISTER messages with one user per
-# line, one for INVITE flows with a caller/callee pair on each line
 SUB_START = 2010000000
 SUB_END = SUB_START + args.subscribers
 
@@ -78,12 +79,14 @@ callers = range(SUB_START, SUB_END, 2)
 shuffle(registers)
 shuffle(callers)
 
-with open("/tmp/registers.csv", "w") as f:
+# Generate the CSV input files - one for REGISTER messages with one user per
+# line, one for INVITE flows with a caller/callee pair on each line
+with open(REGISTER_CSV, "w") as f:
     f.write("SEQUENTIAL\n")
     for s in registers:
         f.write("{}\n".format(s))
 
-with open("/tmp/calls.csv", "w") as f:
+with open(INVITE_CSV, "w") as f:
     f.write("SEQUENTIAL\n")
     for s in callers:
         f.write("{};{}\n".format(s, s+1))
@@ -95,22 +98,25 @@ common_args = ["-key", "home_domain", args.domain,
                args.target]
 
 initial_reg_cmd = [SIPP_BIN,
-                   "-sf", SCRIPTS_DIR + "initial_register.xml",
-                   "-inf", "/tmp/registers.csv",
+                   "-sf", SCRIPTS_DIR + "register.xml",
+                   "-inf", REGISTER_CSV,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscribers)] + common_args
 
 rereg_cmd = [SIPP_BIN,
-             "-sf", SCRIPTS_DIR + "initial_register.xml",
-             "-inf", "/tmp/registers.csv",
+             "-sf", SCRIPTS_DIR + "register.xml",
+             "-inf", REGISTER_CSV,
              "-r", str(RPS),
              "-m", str(REG_MAX)] + common_args
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
-              "-inf", "/tmp/calls.csv",
+              "-inf", INVITE_CSV,
               "-r", str(CPS),
               "-m", str(CALL_MAX)] + common_args
+
+# Callee must listen on port 5082, because this is what's in the Path header in
+# register.xml.
 
 callee_cmd = [SIPP_BIN,
               "-sn", "uas",
@@ -130,6 +136,9 @@ print "Initial registration completed with rc {}".format(proc.returncode)
 
 # The test starts now
 
+# Rediect output from the re-register script and the callee script to
+# /dev/null, but show the output of the caller script to allow the user to
+# monitor progress.
 proc1 = Popen(rereg_cmd, stdout=null, stderr=null)
 proc2 = Popen(callee_cmd, stdout=null, stderr=null)
 proc3 = Popen(caller_cmd)
@@ -137,3 +146,5 @@ proc3 = Popen(caller_cmd)
 proc3.wait()
 proc2.wait()
 proc1.wait()
+
+print "Test complete"
