@@ -1,0 +1,8 @@
+build/
+debian/changelog
+debian/clearwater-sip-stress.debhelper.log
+debian/clearwater-sip-stress.substvars
+debian/clearwater-sip-stress/
+debian/copyright
+debian/files
+
