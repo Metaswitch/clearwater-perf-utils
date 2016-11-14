@@ -34,6 +34,7 @@
 from random import shuffle
 from subprocess import Popen
 import argparse
+from sys import exit
 
 # Constants - directories and load profile
 
@@ -50,7 +51,7 @@ REREG_PER_HOUR = 2
 
 parser = argparse.ArgumentParser(description='Run stress.')
 parser.add_argument('domain', help="Deployment's home domain")
-parser.add_argument('subscribers', help='Number of subscribers to emulate', type=int)
+parser.add_argument('subscriber_count', help='Number of subscribers to emulate', type=int)
 parser.add_argument('duration', help='Number of minutes to run stress for', type=int)
 parser.add_argument('--multiplier', help='Multiplier for the VoLTE load profile (e.g. passing 2 here will mean 2.6 calls and 4 re-registers per sub per hour)', type=int, default=1)
 parser.add_argument('--initial-reg-rate', help='Rate to send in initial, pre-test-run registrations', type=int, default=80)
@@ -62,22 +63,24 @@ if args.target is None:
     args.target = "sprout.{}:5054".format(args.domain)
 
 # Calculate calls/registers per second based on the input
-CPS = BHCA * args.subscribers * args.multiplier / 3600
-RPS = REREG_PER_HOUR * args.subscribers * args.multiplier / 3600
+RPS = REREG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
+CPS = BHCA * args.subscriber_count * args.multiplier / 3600
 
 # Given the duration, how many registers/calls do we need to make?
 REG_MAX = int(args.duration * 60 * RPS)
 CALL_MAX = int(args.duration * 60 * CPS)
 
 SUB_START = 2010000000
-SUB_END = SUB_START + args.subscribers
+SUB_END = SUB_START + args.subscriber_count
 
 registers = range(SUB_START, SUB_END)
 callers = range(SUB_START, SUB_END, 2)
+callees = range(SUB_START + 1, SUB_END, 2)
 
 # Randomly shuffle the order of registers and calls to reduce the risk of any cache issues
 shuffle(registers)
 shuffle(callers)
+shuffle(callees)
 
 # Generate the CSV input files - one for REGISTER messages with one user per
 # line, one for INVITE flows with a caller/callee pair on each line
@@ -88,8 +91,8 @@ with open(REGISTER_CSV, "w") as f:
 
 with open(INVITE_CSV, "w") as f:
     f.write("SEQUENTIAL\n")
-    for s in callers:
-        f.write("{};{}\n".format(s, s+1))
+    for caller, callee in zip(callers, callees):
+        f.write("{};{}\n".format(caller, callee))
 
 null = open("/dev/null", "w+")
 
@@ -101,7 +104,7 @@ initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + "register.xml",
                    "-inf", REGISTER_CSV,
                    "-r", str(args.initial_reg_rate),
-                   "-m", str(args.subscribers)] + common_args
+                   "-m", str(args.subscriber_count)] + common_args
 
 rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
@@ -128,16 +131,21 @@ callee_cmd = [SIPP_BIN,
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
 
-print "Starting initial registration, will take {} seconds".format(args.subscribers/args.initial_reg_rate)
+print "Starting initial registration, will take {} seconds".format(args.subscriber_count/args.initial_reg_rate)
 
 proc = Popen(initial_reg_cmd, stdout=null, stderr=null)
 proc.wait()
 
-print "Initial registration completed with rc {}".format(proc.returncode)
+if proc.returncode != 0:
+    print "Initial registration failed - exiting"
+    exit(proc.returncode)
+else:
+    print "Initial registration succeeded"
 
 # The test starts now
+print "Starting test"
 
-# Rediect output from the re-register script and the callee script to
+# Redirect output from the re-register script and the callee script to
 # /dev/null, but show the output of the caller script to allow the user to
 # monitor progress.
 proc1 = Popen(rereg_cmd, stdout=null, stderr=null)

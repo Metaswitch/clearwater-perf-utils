@@ -12,4 +12,4 @@ Homepage: http://projectclearwater.org/
 Package: clearwater-sip-stress
 Architecture: any
 Depends: clearwater-infrastructure
-Description: Runs SIP stress against Clearwater
+Description: Runs SIP stress against Clearwater as a P-CSCF
