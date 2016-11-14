@@ -113,13 +113,14 @@ caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
               "-inf", INVITE_CSV,
               "-r", str(CPS),
+              "-d", "5000",
               "-m", str(CALL_MAX)] + common_args
 
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
 
 callee_cmd = [SIPP_BIN,
-              "-sn", "uas",
+              "-sf", SCRIPTS_DIR + "callee.xml",
               "-p", "5082",
               "-t", "t1",
               "-m", str(CALL_MAX)]
@@ -141,10 +142,10 @@ print "Initial registration completed with rc {}".format(proc.returncode)
 # monitor progress.
 proc1 = Popen(rereg_cmd, stdout=null, stderr=null)
 proc2 = Popen(callee_cmd, stdout=null, stderr=null)
-proc3 = Popen(caller_cmd)
+proc3 = Popen(caller_cmd, stdout=None, stderr=None)
 
 proc3.wait()
 proc2.wait()
 proc1.wait()
 
-print "Test complete"
+print "Test complete - rcs {}, {}, {}".format(proc1.returncode, proc2.returncode, proc3.returncode)
