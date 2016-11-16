@@ -39,6 +39,8 @@ import csv
 import argparse
 from sys import exit
 
+# Set up a CSV Dialect subclass to handle the semicolon-separated stats files
+# SIPp produces
 class SIPpstats(csv.excel):
 	def __init__(self):
 		Dialect.__init__(self)
