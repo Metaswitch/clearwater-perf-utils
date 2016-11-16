@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
-<scenario name="Basic Sipstone UAC">
+<scenario name="Clearwater registration">
   <send retrans="500">
     <![CDATA[
 
@@ -59,15 +59,11 @@
     ]]>
   </send>
 
-  <recv response="200">
+  <recv response="200" rtd="true">
   </recv>
 
 
   <!-- definition of the response time repartition table (unit is ms)   -->
   <ResponseTimeRepartition value="2, 20, 200, 2000"/>
-
-  <!-- definition of the call length repartition table (unit is ms)     -->
-  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
-
 </scenario>
 
