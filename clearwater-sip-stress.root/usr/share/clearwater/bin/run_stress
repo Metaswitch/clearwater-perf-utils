@@ -1,0 +1,159 @@
+#!/usr/bin/python
+# Project Clearwater - IMS in the Cloud
+# Copyright (C) 2016 Metaswitch Networks Ltd
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version, along with the "Special Exception" for use of
+# the program along with SSL, set forth below. This program is distributed
+# in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details. You should have received a copy of the GNU General Public
+# License along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+# The author can be reached by email at clearwater@metaswitch.com or by
+# post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+#
+# Special Exception
+# Metaswitch Networks Ltd  grants you permission to copy, modify,
+# propagate, and distribute a work formed by combining OpenSSL with The
+# Software, or a work derivative of such a combination, even if such
+# copying, modification, propagation, or distribution would otherwise
+# violate the terms of the GPL. You must comply with the GPL in all
+# respects for all of the code used other than OpenSSL.
+# "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+# Project and licensed under the OpenSSL Licenses, or a work based on such
+# software and licensed under the OpenSSL Licenses.
+# "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+# under which the OpenSSL Project distributes the OpenSSL toolkit software,
+# as those licenses appear in the file LICENSE-OPENSSL.
+
+from random import shuffle
+from subprocess import Popen
+import argparse
+from sys import exit
+
+# Constants - directories and load profile
+
+SIPP_BIN = "/usr/share/clearwater/bin/sipp"
+SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
+
+REGISTER_CSV = "/tmp/registers.csv"
+INVITE_CSV = "/tmp/calls.csv"
+
+BHCA = 1.3
+REREG_PER_HOUR = 2
+
+# Get command-line arguments
+
+parser = argparse.ArgumentParser(description='Run stress.')
+parser.add_argument('domain', help="Deployment's home domain")
+parser.add_argument('subscriber_count', help='Number of subscribers to emulate', type=int)
+parser.add_argument('duration', help='Number of minutes to run stress for', type=int)
+parser.add_argument('--multiplier', help='Multiplier for the VoLTE load profile (e.g. passing 2 here will mean 2.6 calls and 4 re-registers per sub per hour)', type=int, default=1)
+parser.add_argument('--initial-reg-rate', help='Rate to send in initial, pre-test-run registrations', type=int, default=80)
+parser.add_argument('--target', help='Domain/IP and port to target stress at. Default is sprout.{domain}:5054')
+
+args = parser.parse_args()
+
+if args.target is None:
+    args.target = "sprout.{}:5054".format(args.domain)
+
+# Calculate calls/registers per second based on the input
+RPS = REREG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
+CPS = BHCA * args.subscriber_count * args.multiplier / 3600
+
+# Given the duration, how many registers/calls do we need to make?
+REG_MAX = int(args.duration * 60 * RPS)
+CALL_MAX = int(args.duration * 60 * CPS)
+
+SUB_START = 2010000000
+SUB_END = SUB_START + args.subscriber_count
+
+registers = range(SUB_START, SUB_END)
+callers = range(SUB_START, SUB_END, 2)
+callees = range(SUB_START + 1, SUB_END, 2)
+
+# Randomly shuffle the order of registers and calls to reduce the risk of any cache issues
+shuffle(registers)
+shuffle(callers)
+shuffle(callees)
+
+# Generate the CSV input files - one for REGISTER messages with one user per
+# line, one for INVITE flows with a caller/callee pair on each line
+with open(REGISTER_CSV, "w") as f:
+    f.write("SEQUENTIAL\n")
+    for s in registers:
+        f.write("{}\n".format(s))
+
+with open(INVITE_CSV, "w") as f:
+    f.write("SEQUENTIAL\n")
+    for caller, callee in zip(callers, callees):
+        f.write("{};{}\n".format(caller, callee))
+
+null = open("/dev/null", "w+")
+
+common_args = ["-key", "home_domain", args.domain,
+               "-t", "t1",
+               args.target]
+
+initial_reg_cmd = [SIPP_BIN,
+                   "-sf", SCRIPTS_DIR + "register.xml",
+                   "-inf", REGISTER_CSV,
+                   "-r", str(args.initial_reg_rate),
+                   "-m", str(args.subscriber_count)] + common_args
+
+rereg_cmd = [SIPP_BIN,
+             "-sf", SCRIPTS_DIR + "register.xml",
+             "-inf", REGISTER_CSV,
+             "-r", str(RPS),
+             "-m", str(REG_MAX)] + common_args
+
+caller_cmd = [SIPP_BIN,
+              "-sf", SCRIPTS_DIR + "caller.xml",
+              "-inf", INVITE_CSV,
+              "-r", str(CPS),
+              "-d", "5000",
+              "-m", str(CALL_MAX)] + common_args
+
+# Callee must listen on port 5082, because this is what's in the Path header in
+# register.xml.
+
+callee_cmd = [SIPP_BIN,
+              "-sf", SCRIPTS_DIR + "callee.xml",
+              "-p", "5082",
+              "-t", "t1",
+              "-m", str(CALL_MAX)]
+
+# Do initial registrations as quickly as possible for test setup - this is an
+# unrealistic load profile, so no need for measurements yet.
+
+print "Starting initial registration, will take {} seconds".format(args.subscriber_count/args.initial_reg_rate)
+
+proc = Popen(initial_reg_cmd, stdout=null, stderr=null)
+proc.wait()
+
+if proc.returncode != 0:
+    print "Initial registration failed - exiting"
+    exit(proc.returncode)
+else:
+    print "Initial registration succeeded"
+
+# The test starts now
+print "Starting test"
+
+# Redirect output from the re-register script and the callee script to
+# /dev/null, but show the output of the caller script to allow the user to
+# monitor progress.
+proc1 = Popen(rereg_cmd, stdout=null, stderr=null)
+proc2 = Popen(callee_cmd, stdout=null, stderr=null)
+proc3 = Popen(caller_cmd, stdout=None, stderr=None)
+
+proc3.wait()
+proc2.wait()
+proc1.wait()
+
+print "Test complete - rcs {}, {}, {}".format(proc1.returncode, proc2.returncode, proc3.returncode)
