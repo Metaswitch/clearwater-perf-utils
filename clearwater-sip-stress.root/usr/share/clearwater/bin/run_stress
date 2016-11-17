@@ -161,7 +161,11 @@ callee_cmd = [SIPP_BIN,
 
 print "Starting initial registration, will take {} seconds".format(args.subscriber_count/args.initial_reg_rate)
 
-proc = Popen(initial_reg_cmd, stdout=null, stderr=null)
+if args.sipp_output:
+    proc = Popen(initial_reg_cmd)
+else:
+    proc = Popen(initial_reg_cmd, stdout=null, stderr=null)
+
 proc.wait()
 
 if proc.returncode != 0:
