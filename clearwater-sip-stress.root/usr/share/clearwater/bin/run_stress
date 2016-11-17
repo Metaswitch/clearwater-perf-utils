@@ -80,7 +80,10 @@ parser.add_argument('--sipp-output', help='Show SIPp output screen', action='sto
 args = parser.parse_args()
 
 if args.target is None:
-    args.target = "sprout.{}:5054".format(args.domain)
+    args.target = "sprout.{}".format(args.domain)
+
+icscf_target = args.target + ":5052"
+scscf_target = args.target + ":5054"
 
 # Calculate calls/registers per second based on the input
 RPS = REREG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
@@ -117,15 +120,14 @@ with open(INVITE_CSV, "w") as f:
 null = open("/dev/null", "w+")
 
 common_args = ["-key", "home_domain", args.domain,
-               "-t", "t1",
-               args.target]
+               "-t", "t1"]
 
 initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + "register.xml",
                    "-inf", REGISTER_CSV,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
-                   "-m", str(args.subscriber_count)] + common_args
+                   "-m", str(args.subscriber_count)] + common_args + [icscf_target]
 
 rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
@@ -133,7 +135,7 @@ rereg_cmd = [SIPP_BIN,
 	     "-trace_err", "-error_file", RE_REG_ERRORS,
              "-trace_stat", "-stf", RE_REG_STATS,
              "-r", str(RPS),
-             "-m", str(REG_MAX)] + common_args
+             "-m", str(REG_MAX)] + common_args + [icscf_target]
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
@@ -142,7 +144,7 @@ caller_cmd = [SIPP_BIN,
               "-trace_stat", "-stf", CALLER_STATS,
               "-r", str(CPS),
               "-d", str(args.call_length * 1000),
-              "-m", str(CALL_MAX)] + common_args
+              "-m", str(CALL_MAX)] + common_args + [scscf_target]
 
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
