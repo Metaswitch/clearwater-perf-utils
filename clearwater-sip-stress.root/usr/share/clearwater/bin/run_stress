@@ -176,16 +176,23 @@ start_time = datetime.now()
 # Redirect output from the re-register script and the callee script to
 # /dev/null, but show the output of the caller script to allow the user to
 # monitor progress.
-proc1 = Popen(rereg_cmd, stdout=null, stderr=null)
-proc2 = Popen(callee_cmd, stdout=null, stderr=null)
+rereg_proc = Popen(rereg_cmd, stdout=null, stderr=null)
+callee_proc = Popen(callee_cmd, stdout=null, stderr=null)
 if args.sipp_output:
-    proc3 = Popen(caller_cmd)
+    caller_proc = Popen(caller_cmd)
 else:
-    proc3 = Popen(caller_cmd, stdout=null, stderr=null)
+    caller_proc = Popen(caller_cmd, stdout=null, stderr=null)
 
-proc3.wait()
-proc1.wait()
-proc2.kill()
+# Wait for the appropriate number of calls and re-registrations to have been
+# attempted (and either failed or completed)
+caller_proc.wait()
+rereg_proc.wait()
+
+# Kill the callee SIPp process - it might not naturally terminate (for example,
+# if not all the attempted calls get through to it, so it never hits its call
+# limit), and we know it's not doing anything now that caller_proc has
+# completed.
+callee_proc.kill()
 
 print "Test complete"
 end_time = datetime.now()
