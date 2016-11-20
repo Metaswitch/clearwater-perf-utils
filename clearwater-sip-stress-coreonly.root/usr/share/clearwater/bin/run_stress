@@ -49,7 +49,7 @@ class SIPpstats(csv.excel):
 
 # Constants - directories and load profile
 
-SIPP_BIN = "/usr/share/clearwater/bin/sipp"
+SIPP_BIN = "/usr/share/clearwater/bin/sipp_coreonly"
 SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
 REGISTER_CSV = "/tmp/registers.csv"
