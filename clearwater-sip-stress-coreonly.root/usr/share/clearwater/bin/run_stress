@@ -73,17 +73,18 @@ parser.add_argument('subscriber_count', help='Number of subscribers to emulate',
 parser.add_argument('duration', help='Number of minutes to run stress for', type=int)
 parser.add_argument('--multiplier', help='Multiplier for the VoLTE load profile (e.g. passing 2 here will mean 2.6 calls and 4 re-registers per sub per hour)', type=int, default=1)
 parser.add_argument('--initial-reg-rate', help='Rate to send in initial, pre-test-run registrations', type=int, default=80)
-parser.add_argument('--target', help='Domain/IP and port to target stress at. Default is sprout.{domain}:5054')
+parser.add_argument('--icscf-target', help='Domain/IP and port to target registration stress at. Default is sprout.{domain}:5054')
+parser.add_argument('--scscf-target', help='Domain/IP and port to target call stress at. Default is sprout.{domain}:5052')
 parser.add_argument('--call-length', help='Call length in seconds', type=int, default=5)
 parser.add_argument('--sipp-output', help='Show SIPp output screen', action='store_const', const=True, default=False)
 
 args = parser.parse_args()
 
-if args.target is None:
-    args.target = "sprout.{}".format(args.domain)
+if args.icscf_target is None:
+    args.icscf_target = "sprout.{}:5052".format(args.domain)
 
-icscf_target = args.target + ":5052"
-scscf_target = args.target + ":5054"
+if args.scscf_target is None:
+    args.scscf_target = "sprout.{}:5054".format(args.domain)
 
 # Calculate calls/registers per second based on the input
 RPS = REREG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
@@ -127,7 +128,7 @@ initial_reg_cmd = [SIPP_BIN,
                    "-inf", REGISTER_CSV,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
-                   "-m", str(args.subscriber_count)] + common_args + [icscf_target]
+                   "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
 rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
@@ -135,7 +136,7 @@ rereg_cmd = [SIPP_BIN,
 	     "-trace_err", "-error_file", RE_REG_ERRORS,
              "-trace_stat", "-stf", RE_REG_STATS,
              "-r", str(RPS),
-             "-m", str(REG_MAX)] + common_args + [icscf_target]
+             "-m", str(REG_MAX)] + common_args + [args.icscf_target]
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
@@ -144,7 +145,7 @@ caller_cmd = [SIPP_BIN,
               "-trace_stat", "-stf", CALLER_STATS,
               "-r", str(CPS),
               "-d", str(args.call_length * 1000),
-              "-m", str(CALL_MAX)] + common_args + [scscf_target]
+              "-m", str(CALL_MAX)] + common_args + [args.scscf_target]
 
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
