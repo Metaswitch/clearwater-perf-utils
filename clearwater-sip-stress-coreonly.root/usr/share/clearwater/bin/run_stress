@@ -42,10 +42,10 @@ from sys import exit
 # Set up a CSV Dialect subclass to handle the semicolon-separated stats files
 # SIPp produces
 class SIPpstats(csv.excel):
-	def __init__(self):
-		Dialect.__init__(self)
-		self.quoting = csv.QUOTE_MINIMAL
-		self.delimiter = ";"
+    def __init__(self):
+        Dialect.__init__(self)
+        self.quoting = csv.QUOTE_MINIMAL
+        self.delimiter = ";"
 
 # Constants - directories and load profile
 
@@ -121,43 +121,43 @@ with open(INVITE_CSV, "w") as f:
 null = open("/dev/null", "w+")
 
 common_args = ["-key", "home_domain", args.domain,
-               "-t", "t1"]
+        "-t", "t1"]
 
 initial_reg_cmd = [SIPP_BIN,
-                   "-sf", SCRIPTS_DIR + "register.xml",
-                   "-inf", REGISTER_CSV,
-                   "-trace_err", "-error_file", INITIAL_REG_ERRORS,
-                   "-default_behaviors", "all,-bye",
-                   "-r", str(args.initial_reg_rate),
-                   "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
+        "-sf", SCRIPTS_DIR + "register.xml",
+        "-inf", REGISTER_CSV,
+        "-trace_err", "-error_file", INITIAL_REG_ERRORS,
+        "-default_behaviors", "all,-bye",
+        "-r", str(args.initial_reg_rate),
+        "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
 rereg_cmd = [SIPP_BIN,
-             "-sf", SCRIPTS_DIR + "register.xml",
-             "-inf", REGISTER_CSV,
-	     "-trace_err", "-error_file", RE_REG_ERRORS,
-             "-default_behaviors", "all,-bye",
-             "-trace_stat", "-stf", RE_REG_STATS,
-             "-r", str(RPS),
-             "-m", str(REG_MAX)] + common_args + [args.icscf_target]
+        "-sf", SCRIPTS_DIR + "register.xml",
+        "-inf", REGISTER_CSV,
+        "-trace_err", "-error_file", RE_REG_ERRORS,
+        "-default_behaviors", "all,-bye",
+        "-trace_stat", "-stf", RE_REG_STATS,
+        "-r", str(RPS),
+        "-m", str(REG_MAX)] + common_args + [args.icscf_target]
 
 caller_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + "caller.xml",
-              "-inf", INVITE_CSV,
-              "-trace_err", "-error_file", CALLER_ERRORS,
-              "-trace_stat", "-stf", CALLER_STATS,
-              "-r", str(CPS),
-              "-d", str(args.call_length * 1000),
-              "-m", str(CALL_MAX)] + common_args + [args.scscf_target]
+        "-sf", SCRIPTS_DIR + "caller.xml",
+        "-inf", INVITE_CSV,
+        "-trace_err", "-error_file", CALLER_ERRORS,
+        "-trace_stat", "-stf", CALLER_STATS,
+        "-r", str(CPS),
+        "-d", str(args.call_length * 1000),
+        "-m", str(CALL_MAX)] + common_args + [args.scscf_target]
 
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
 
 callee_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + "callee.xml",
-	      "-trace_err", "-error_file", CALLEE_ERRORS,
-              "-p", "5082",
-              "-t", "t1",
-              "-m", str(CALL_MAX)]
+        "-sf", SCRIPTS_DIR + "callee.xml",
+        "-trace_err", "-error_file", CALLEE_ERRORS,
+        "-p", "5082",
+        "-t", "t1",
+        "-m", str(CALL_MAX)]
 
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
@@ -207,12 +207,12 @@ print "Test complete"
 end_time = datetime.now()
 
 with open(CALLER_STATS) as f:
-	r = DictReader(f, dialect=SIPpstats())
-	for row in r:
-		pass
-	hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
-	rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
-	print """
+    r = DictReader(f, dialect=SIPpstats())
+    for row in r:
+        pass
+    hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
+    rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
+    print """
 Elapsed time: {}
 Start: {}
 End: {}
@@ -229,34 +229,34 @@ Average time from INVITE to 180 Ringing: {} ms
 # of calls with 20-200ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 200-2000ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 2000+ms from INVITE to 180 Ringing: {} ({}%)""".format(
-	row['ElapsedTime(C)'],
-        start_time,
-        end_time,
-	row['TotalCallCreated'],
-	row['SuccessfulCall(C)'],
-	100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
-	row['FailedCall(C)'],
-	100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
-	row['Retransmissions(C)'],
-	rtt,
-	row['ResponseTimeRepartition1_<2'],
-	100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
-	row['ResponseTimeRepartition1_<20'],
-	100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
-	row['ResponseTimeRepartition1_<200'],
-	100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
-	row['ResponseTimeRepartition1_<2000'],
-	100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
-	row['ResponseTimeRepartition1_>=2000'],
-	100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
+    row['ElapsedTime(C)'],
+    start_time,
+    end_time,
+    row['TotalCallCreated'],
+    row['SuccessfulCall(C)'],
+    100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+    row['FailedCall(C)'],
+    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+    row['Retransmissions(C)'],
+    rtt,
+    row['ResponseTimeRepartition1_<2'],
+    100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<20'],
+    100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<200'],
+    100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<2000'],
+    100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_>=2000'],
+    100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
 
 with open(RE_REG_STATS) as f:
-	r = DictReader(f, dialect=SIPpstats())
-	for row in r:
-		pass
-	hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
-	rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
-        print """
+    r = DictReader(f, dialect=SIPpstats())
+    for row in r:
+        pass
+    hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
+    rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
+    print """
 Total re-REGISTERs: {}
 Successful re-REGISTERs: {} ({}%)
 Failed re-REGISTERS: {} ({}%)
@@ -264,12 +264,12 @@ Failed re-REGISTERS: {} ({}%)
 REGISTER retransmissions: {}
 
 Average time from REGISTER to 200 OK: {} ms""".format(
-        row['TotalCallCreated'],
-        row['SuccessfulCall(C)'],
-        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
-        row['FailedCall(C)'],
-        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
-        row['Retransmissions(C)'],
-        rtt)
+    row['TotalCallCreated'],
+    row['SuccessfulCall(C)'],
+    100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+    row['FailedCall(C)'],
+    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+    row['Retransmissions(C)'],
+    rtt)
 
 print "\nLog files in /var/log/clearwater-sip-stress"
