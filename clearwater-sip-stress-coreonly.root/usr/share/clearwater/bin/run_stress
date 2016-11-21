@@ -127,6 +127,7 @@ initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + "register.xml",
                    "-inf", REGISTER_CSV,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
+                   "-default_behaviors", "all,-bye",
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
@@ -134,6 +135,7 @@ rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
              "-inf", REGISTER_CSV,
 	     "-trace_err", "-error_file", RE_REG_ERRORS,
+             "-default_behaviors", "all,-bye",
              "-trace_stat", "-stf", RE_REG_STATS,
              "-r", str(RPS),
              "-m", str(REG_MAX)] + common_args + [args.icscf_target]
