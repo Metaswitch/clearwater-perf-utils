@@ -121,43 +121,42 @@ with open(INVITE_CSV, "w") as f:
 null = open("/dev/null", "w+")
 
 common_args = ["-key", "home_domain", args.domain,
-        "-t", "t1"]
+               "-default_behaviors", "all,-bye",
+               "-t", "t1"]
 
 initial_reg_cmd = [SIPP_BIN,
-        "-sf", SCRIPTS_DIR + "register.xml",
-        "-inf", REGISTER_CSV,
-        "-trace_err", "-error_file", INITIAL_REG_ERRORS,
-        "-default_behaviors", "all,-bye",
-        "-r", str(args.initial_reg_rate),
-        "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
+                   "-sf", SCRIPTS_DIR + "register.xml",
+                   "-inf", REGISTER_CSV,
+                   "-trace_err", "-error_file", INITIAL_REG_ERRORS,
+                   "-r", str(args.initial_reg_rate),
+                   "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
 rereg_cmd = [SIPP_BIN,
-        "-sf", SCRIPTS_DIR + "register.xml",
-        "-inf", REGISTER_CSV,
-        "-trace_err", "-error_file", RE_REG_ERRORS,
-        "-default_behaviors", "all,-bye",
-        "-trace_stat", "-stf", RE_REG_STATS,
-        "-r", str(RPS),
-        "-m", str(REG_MAX)] + common_args + [args.icscf_target]
+             "-sf", SCRIPTS_DIR + "register.xml",
+             "-inf", REGISTER_CSV,
+             "-trace_err", "-error_file", RE_REG_ERRORS,
+             "-trace_stat", "-stf", RE_REG_STATS,
+             "-r", str(RPS),
+             "-m", str(REG_MAX)] + common_args + [args.icscf_target]
 
 caller_cmd = [SIPP_BIN,
-        "-sf", SCRIPTS_DIR + "caller.xml",
-        "-inf", INVITE_CSV,
-        "-trace_err", "-error_file", CALLER_ERRORS,
-        "-trace_stat", "-stf", CALLER_STATS,
-        "-r", str(CPS),
-        "-d", str(args.call_length * 1000),
-        "-m", str(CALL_MAX)] + common_args + [args.scscf_target]
+              "-sf", SCRIPTS_DIR + "caller.xml",
+              "-inf", INVITE_CSV,
+              "-trace_err", "-error_file", CALLER_ERRORS,
+              "-trace_stat", "-stf", CALLER_STATS,
+              "-r", str(CPS),
+              "-d", str(args.call_length * 1000),
+              "-m", str(CALL_MAX)] + common_args + [args.scscf_target]
 
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
 
 callee_cmd = [SIPP_BIN,
-        "-sf", SCRIPTS_DIR + "callee.xml",
-        "-trace_err", "-error_file", CALLEE_ERRORS,
-        "-p", "5082",
-        "-t", "t1",
-        "-m", str(CALL_MAX)]
+              "-sf", SCRIPTS_DIR + "callee.xml",
+              "-trace_err", "-error_file", CALLEE_ERRORS,
+              "-p", "5082",
+              "-t", "t1",
+              "-m", str(CALL_MAX)]
 
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
@@ -208,6 +207,7 @@ end_time = datetime.now()
 
 with open(CALLER_STATS) as f:
     r = DictReader(f, dialect=SIPpstats())
+    # Iterate over the whole file so that `row` is set to the last row
     for row in r:
         pass
     hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
@@ -252,6 +252,7 @@ Average time from INVITE to 180 Ringing: {} ms
 
 with open(RE_REG_STATS) as f:
     r = DictReader(f, dialect=SIPpstats())
+    # Iterate over the whole file so that `row` is set to the last row
     for row in r:
         pass
     hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
