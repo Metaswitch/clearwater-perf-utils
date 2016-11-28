@@ -1,14 +1,15 @@
 all: build
 
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
-DEB_COMPONENT := clearwater-sip-stress
-DEB_NAMES := clearwater-sip-stress
+DEB_COMPONENT := clearwater-perf-utils
+DEB_NAMES := clearwater-sip-stress-coreonly
 
 build:
-	cd ./sipp && autoreconf -vifs && ./configure && make
+	cd ./sipp && autoreconf -vifs && ./configure && make && mv sipp sipp_coreonly
 
 clean:
 	${MAKE} -C ./sipp clean
+	rm ./sipp/sipp_coreonly
 
 include build-infra/cw-deb.mk
 

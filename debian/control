@@ -1,4 +1,4 @@
-Source: clearwater-sip-stress
+Source: clearwater-perf-utils
 Section: network
 Priority: optional
 # This field must stay as 'Project Clearwater Maintainers', as
@@ -9,7 +9,7 @@ Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.2
 Homepage: http://projectclearwater.org/
 
-Package: clearwater-sip-stress
+Package: clearwater-sip-stress-coreonly
 Architecture: any
 Depends: clearwater-infrastructure
 Description: Runs SIP stress against Clearwater as a P-CSCF

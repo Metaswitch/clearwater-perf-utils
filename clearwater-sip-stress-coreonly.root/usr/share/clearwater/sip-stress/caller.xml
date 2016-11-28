@@ -140,14 +140,17 @@
 
     ]]>
   </send>
-  
-  <recv response="200">
+
+  <!-- The 200 OK to the UPDATE and the 180 Ringing can cross over. Marking the
+       200 OK as optional prevents SIPp from failing the call if it sees the
+       180 Ringing first. --> 
+  <recv response="200" optional="true">
   </recv>
 
   <recv response="180" rtd="true">
   </recv>
 
-  <recv response="200" rtd="true" rrs="true">
+  <recv response="200">
   </recv>
 
   <send>

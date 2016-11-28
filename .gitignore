@@ -1,7 +1,7 @@
 build/
 debian/changelog
-debian/clearwater-sip-stress.debhelper.log
-debian/clearwater-sip-stress.substvars
-debian/clearwater-sip-stress/
+debian/clearwater-sip-stress-coreonly.debhelper.log
+debian/clearwater-sip-stress-coreonly.substvars
+debian/clearwater-sip-stress-coreonly/
 debian/copyright
 debian/files
