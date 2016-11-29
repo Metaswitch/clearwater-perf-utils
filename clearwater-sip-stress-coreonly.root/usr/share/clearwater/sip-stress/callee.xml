@@ -6,11 +6,16 @@
     <action>
       <!-- Save off our identity for later use -->
       <ereg regexp=".*<sip:(.*)@(.*)>.*" search_in="hdr" header="To:" check_it="true" assign_to="_,dn,home_domain" />
-      <!-- Save off the per-transaction headers, for use on the eventual 180 Ringing and 200 OK -->
-      <ereg regexp=".*" search_in="hdr" header="CSeq:" check_it="true" assign_to="invite_cseq" />
-      <ereg regexp=".*" search_in="hdr" header="Via:" check_it="true" assign_to="invite_via" />
     </action>
   </recv>
+
+  <nop>
+    <action>
+      <!-- Save off the per-transaction headers, for use on the eventual 180 Ringing and 200 OK -->
+      <assignstr assign_to="invite_cseq" value="[last_Cseq:]" />
+      <assignstr assign_to="invite_via" value="[last_Via:]" />
+    </action>
+  </nop>
 
   <send>
     <![CDATA[
@@ -87,9 +92,11 @@
   <recv request="UPDATE">
   </recv>
 
+  <!-- Use 201 as the response code for the UPDATE, to clearly distinguish it
+       from the 200 OK for the INVITE. -->
   <send>
     <![CDATA[
-      SIP/2.0 200 OK
+      SIP/2.0 201 OK
       [last_Call-ID:]
       [last_CSeq:]
       [last_From:]
@@ -136,10 +143,10 @@
     <![CDATA[
       SIP/2.0 180 Ringing
       [last_Call-ID:]
-      CSeq: [$invite_cseq]
+      [$invite_cseq]
       [last_From:]
       [last_To:];tag=[pid]SIPpTag01[call_number]
-      Via: [$invite_via]
+      [$invite_via]
       Server: SIP/2.0
       Content-Length: 0
       [last_P-Charging-Vector:]
@@ -160,10 +167,10 @@
     <![CDATA[
       SIP/2.0 200 OK
       [last_Call-ID:]
-      CSeq: [$invite_cseq]
+      [$invite_cseq]
       [last_From:]
       [last_To:];tag=[pid]SIPpTag01[call_number]
-      Via: [$invite_via]
+      [$invite_via]
       Server: SIP/2.0
       Content-Length: 0
       Supported: 100rel,timer,precondition,histinfo
