@@ -2,7 +2,7 @@
 <!DOCTYPE scenario SYSTEM "sipp.dtd">
 
 <scenario name="Clearwater caller">
-  <send retrans="500">
+  <send retrans="500" start_txn="invite">
     <![CDATA[
       INVITE sip:[field1]@[home_domain];user=phone SIP/2.0
       Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
@@ -65,11 +65,11 @@
     ]]>
   </send>
 
-  <recv response="100" optional="true">
+  <recv response="100" optional="true" response_txn="invite">
   </recv>
 
   <!-- We treat the 183 as dialog-creating, and take the Record-Route headers from there -->
-  <recv response="183" rrs="true">
+  <recv response="183" rrs="true" response_txn="invite">
   </recv>
 
   <send>
@@ -141,19 +141,31 @@
     ]]>
   </send>
 
-  <!-- The 200 OK to the UPDATE and the 180 Ringing can cross over. Marking the
-       200 OK as optional prevents SIPp from failing the call if it sees the
-       180 Ringing first. --> 
-  <recv response="200" optional="true">
+  <!--
+       The 2xx response to the UPDATE and the 180 Ringing can cross over, and
+       the UPDATE response can get confused with the 2xx response to the
+       INVITE. To solve this:
+
+       - we use 201, not 200, as the UPDATE response code (this is fine because
+         it's still in the 2xx class)
+ 
+       - we expect the UPDATE response as an optional message in the two places
+         we've seen it appear, before and after the 180 Ringing
+  -->
+  
+  <recv response="201" optional="true">
   </recv>
 
-  <recv response="180" rtd="true">
+  <recv response="180" rtd="true" response_txn="invite">
   </recv>
 
-  <recv response="200">
+  <recv response="201" optional="true">
   </recv>
 
-  <send>
+  <recv response="200" response_txn="invite">
+  </recv>
+
+  <send ack_txn="invite">
     <![CDATA[
       ACK [next_url] SIP/2.0
       Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
