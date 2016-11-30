@@ -38,6 +38,8 @@ from datetime import datetime
 import csv
 import argparse
 from sys import exit
+from tempfile import NamedTemporaryFile
+import os
 
 # Set up a CSV Dialect subclass to handle the semicolon-separated stats files
 # SIPp produces
@@ -52,15 +54,17 @@ class SIPpstats(csv.excel):
 SIPP_BIN = "/usr/share/clearwater/bin/sipp_coreonly"
 SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
-REGISTER_CSV = "/tmp/registers.csv"
-INVITE_CSV = "/tmp/calls.csv"
+REGISTER_CSV = NamedTemporaryFile(prefix="sipp_register")
+INVITE_CSV = NamedTemporaryFile(prefix="sipp_calls")
 
-INITIAL_REG_ERRORS = "/var/log/clearwater-sip-stress/initialreg_errors.log"
-RE_REG_ERRORS = "/var/log/clearwater-sip-stress/rereg_errors.log"
-CALLER_ERRORS = "/var/log/clearwater-sip-stress/caller_errors.log"
-CALLEE_ERRORS = "/var/log/clearwater-sip-stress/callee_errors.log"
-RE_REG_STATS = "/var/log/clearwater-sip-stress/rereg_stats.log"
-CALLER_STATS = "/var/log/clearwater-sip-stress/caller_stats.log"
+LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(os.getpid())
+
+INITIAL_REG_ERRORS = LOG_PREFIX + "initialreg_errors.log"
+RE_REG_ERRORS = LOG_PREFIX + "rereg_errors.log"
+CALLER_ERRORS = LOG_PREFIX + "caller_errors.log"
+CALLEE_ERRORS = LOG_PREFIX + "callee_errors.log"
+RE_REG_STATS  = LOG_PREFIX + "rereg_stats.log"
+CALLER_STATS  = LOG_PREFIX + "caller_stats.log"
 
 BHCA = 1.3
 
@@ -113,15 +117,13 @@ shuffle(callees)
 
 # Generate the CSV input files - one for REGISTER messages with one user per
 # line, one for INVITE flows with a caller/callee pair on each line
-with open(REGISTER_CSV, "w") as f:
-    f.write("SEQUENTIAL\n")
-    for s in registers:
-        f.write("{}\n".format(s))
+REGISTER_CSV.write("SEQUENTIAL\n")
+for s in registers:
+    REGISTER_CSV.write("{}\n".format(s))
 
-with open(INVITE_CSV, "w") as f:
-    f.write("SEQUENTIAL\n")
-    for caller, callee in zip(callers, callees):
-        f.write("{};{}\n".format(caller, callee))
+INVITE_CSV.write("SEQUENTIAL\n")
+for caller, callee in zip(callers, callees):
+    INVITE_CSV.write("{};{}\n".format(caller, callee))
 
 null = open("/dev/null", "w+")
 
@@ -131,14 +133,14 @@ common_args = ["-key", "home_domain", args.domain,
 
 initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + "register.xml",
-                   "-inf", REGISTER_CSV,
+                   "-inf", REGISTER_CSV.name,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
 rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
-             "-inf", REGISTER_CSV,
+             "-inf", REGISTER_CSV.name,
              "-trace_err", "-error_file", RE_REG_ERRORS,
              "-trace_stat", "-stf", RE_REG_STATS,
              "-r", str(RPS),
@@ -146,7 +148,7 @@ rereg_cmd = [SIPP_BIN,
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
-              "-inf", INVITE_CSV,
+              "-inf", INVITE_CSV.name,
               "-trace_err", "-error_file", CALLER_ERRORS,
               "-trace_stat", "-stf", CALLER_STATS,
               "-r", str(CPS),
