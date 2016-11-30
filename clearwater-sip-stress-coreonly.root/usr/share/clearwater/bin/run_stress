@@ -120,10 +120,12 @@ shuffle(callees)
 REGISTER_CSV.write("SEQUENTIAL\n")
 for s in registers:
     REGISTER_CSV.write("{}\n".format(s))
+REGISTER_CSV.flush()
 
 INVITE_CSV.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
     INVITE_CSV.write("{};{}\n".format(caller, callee))
+INVITE_CSV.flush()
 
 null = open("/dev/null", "w+")
 
