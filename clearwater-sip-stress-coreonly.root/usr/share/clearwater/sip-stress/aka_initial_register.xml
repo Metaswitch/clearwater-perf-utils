@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="Clearwater registration">
+  <send retrans="500">
+    <![CDATA[
+
+	REGISTER sip:[home_domain] SIP/2.0
+	Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+	From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
+	Content-Length: 0
+	Require: Path
+	Path: <sip:[local_ip]:5082;transport=tcp;lr>
+	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
+	Supported: path
+	To: <sip:[field0]@[home_domain]>
+	Route: <sip:icscf.sprout.[home_domain];lr>
+	Max-Forwards: 70
+	Contact: sip:[field0]@[local_ip]:[local_port]
+	Call-ID: [call_id]
+	CSeq: 1 REGISTER
+	Expires: 3600
+	Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, UPDATE, INFO, REFER, NOTIFY, MESSAGE, PRACK
+	Supported: path, gruu
+	Authorization: Digest username="[field0]@[home_domain]",realm="[home_domain]",uri="sip:[home_domain]",nonce="",response="",algorithm=AKAv1-MD5,integrity-protected=no
+	User-Agent: 00-00000-0000000000000 Phone IMS 10.0
+	P-Access-Network-Info: IEEE-802.11;i-wlan-node-id=000000000000;country=GB;local-time-zone="2016-01-01T00:00:00-00:00"
+	P-Visited-Network-ID: [home_domain]
+    ]]>
+  </send>
+
+  <recv response="401" auth="true">
+  </recv>
+
+  <send retrans="500">
+    <![CDATA[
+
+	REGISTER sip:[home_domain] SIP/2.0
+	Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+	From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
+	Content-Length: 0
+	Require: Path
+	Path: <sip:[local_ip]:5082;transport=tcp;lr>
+	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
+	Supported: path
+	To: <sip:[field0]@[home_domain]>
+	Route: <sip:icscf.sprout.[home_domain];lr>
+	Max-Forwards: 70
+	Contact: sip:[field0]@[local_ip]:[local_port]
+	Call-ID: [call_id]
+	CSeq: 2 REGISTER
+	Expires: 3600
+	Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, UPDATE, INFO, REFER, NOTIFY, MESSAGE, PRACK
+	Supported: path, gruu
+	[authentication aka_XRES=0x346667c3e9200037]
+	User-Agent: 00-00000-0000000000000 Phone IMS 10.0
+	P-Access-Network-Info: IEEE-802.11;i-wlan-node-id=000000000000;country=GB;local-time-zone="2016-01-01T00:00:00-00:00"
+	P-Visited-Network-ID: [home_domain]
+    ]]>
+  </send>
+
+  <recv response="200" rtd="true">
+  </recv>
+
+
+  <!-- definition of the response time repartition table (unit is ms)   -->
+  <ResponseTimeRepartition value="2, 20, 200, 2000"/>
+</scenario>
+

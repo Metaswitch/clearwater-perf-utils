@@ -82,6 +82,7 @@ parser.add_argument('--icscf-target', help='Domain/IP and port to target registr
 parser.add_argument('--scscf-target', help='Domain/IP and port to target call stress at. Default is sprout.{domain}:5052')
 parser.add_argument('--call-length', help='Call length in seconds', type=int, default=5)
 parser.add_argument('--sipp-output', help='Show SIPp output screen', action='store_const', const=True, default=False)
+parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', action='store_const', const=True, default=False)
 
 args = parser.parse_args()
 
@@ -129,20 +130,27 @@ common_args = ["-key", "home_domain", args.domain,
                "-default_behaviors", "all,-bye",
                "-t", "t1"]
 
+if args.aka:
+    initial_reg_xml = "aka_initial_register.xml"
+    re_reg_xml = "aka_re_register.xml"
+else:
+    initial_reg_xml = "digest_register.xml"
+    re_reg_xml = "digest_register.xml"
+
 initial_reg_cmd = [SIPP_BIN,
-                   "-sf", SCRIPTS_DIR + "register.xml",
+                   "-sf", SCRIPTS_DIR + initial_reg_xml,
                    "-inf", REGISTER_CSV,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
-rereg_cmd = [SIPP_BIN,
-             "-sf", SCRIPTS_DIR + "register.xml",
-             "-inf", REGISTER_CSV,
-             "-trace_err", "-error_file", RE_REG_ERRORS,
-             "-trace_stat", "-stf", RE_REG_STATS,
-             "-r", str(RPS),
-             "-m", str(REG_MAX)] + common_args + [args.icscf_target]
+re_reg_cmd = [SIPP_BIN,
+              "-sf", SCRIPTS_DIR + re_reg_xml,
+              "-inf", REGISTER_CSV,
+              "-trace_err", "-error_file", RE_REG_ERRORS,
+              "-trace_stat", "-stf", RE_REG_STATS,
+              "-r", str(RPS),
+              "-m", str(REG_MAX)] + common_args + [args.icscf_target]
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
@@ -189,7 +197,7 @@ start_time = datetime.now()
 # Redirect output from the re-register script and the callee script to
 # /dev/null, but show the output of the caller script to allow the user to
 # monitor progress.
-rereg_proc = Popen(rereg_cmd, stdout=null, stderr=null)
+re_reg_proc = Popen(re_reg_cmd, stdout=null, stderr=null)
 callee_proc = Popen(callee_cmd, stdout=null, stderr=null)
 if args.sipp_output:
     caller_proc = Popen(caller_cmd)
@@ -199,7 +207,7 @@ else:
 # Wait for the appropriate number of calls and re-registrations to have been
 # attempted (and either failed or completed)
 caller_proc.wait()
-rereg_proc.wait()
+re_reg_proc.wait()
 
 # Kill the callee SIPp process - it might not naturally terminate (for example,
 # if not all the attempted calls get through to it, so it never hits its call
