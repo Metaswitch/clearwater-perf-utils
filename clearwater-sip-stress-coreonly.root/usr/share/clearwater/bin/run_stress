@@ -80,7 +80,7 @@ parser.add_argument('--call-length', help='Call length in seconds', type=int, de
 parser.add_argument('--sipp-output', help='Show SIPp output screen', action='store_const', const=True, default=False)
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
-parser.add_argument('--base-number', help='First number in the number rage for subscribers', type=int, default=2010000000)
+parser.add_argument('--base-number', help='First number in the number range for subscribers', type=int, default=2010000000)
 
 args = parser.parse_args()
 
