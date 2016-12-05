@@ -282,4 +282,4 @@ Average time from REGISTER to 200 OK: {} ms""".format(
     row['Retransmissions(C)'],
     rtt)
 
-print "\nLog files in /var/log/clearwater-sip-stress"
+print "\nLog files in /var/log/clearwater-sip-stress, with prefix {}".format(os.getpid())
