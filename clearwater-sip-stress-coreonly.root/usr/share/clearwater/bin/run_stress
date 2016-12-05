@@ -98,6 +98,7 @@ CPS = BHCA * args.subscriber_count * args.multiplier / 3600
 REG_MAX = int(args.duration * 60 * RPS)
 CALL_MAX = int(args.duration * 60 * CPS)
 
+# If all we want is a single call, override the settings to allow that.
 if args.single:
     REG_MAX = 2
     CALL_MAX = 1
@@ -188,7 +189,10 @@ if proc.returncode != 0:
 else:
     print "Initial registration succeeded"
 
+# If we want to make a pair of registrations then a single call, pause before
+# the call in case the user wants to set anything up.
 if args.single:
+    print "Pausing for 2 minutes before making call"
     sleep(120)
 
 # The test starts now
@@ -198,9 +202,13 @@ start_time = datetime.now()
 # Redirect output from the re-register script and the callee script to
 # /dev/null, but show the output of the caller script to allow the user to
 # monitor progress.
+
+# Get a SIPp process to do re-registrations, unless all we're making is a single call.
 if not args.single:
     rereg_proc = Popen(rereg_cmd, stdout=null, stderr=null)
+
 callee_proc = Popen(callee_cmd, stdout=null, stderr=null)
+
 if args.sipp_output:
     caller_proc = Popen(caller_cmd)
 else:
@@ -267,7 +275,7 @@ Average time from INVITE to 180 Ringing: {} ms
     row['ResponseTimeRepartition1_>=2000'],
     100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
 
-if not args.single:
+if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
     with open(RE_REG_STATS) as f:
         r = DictReader(f, dialect=SIPpstats())
         # Iterate over the whole file so that `row` is set to the last row
