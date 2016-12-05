@@ -125,9 +125,13 @@ with open(INVITE_CSV, "w") as f:
 
 null = open("/dev/null", "w+")
 
-common_args = [ "-default_behaviors", "all,-bye",
+common_args = ["-default_behaviors", "all,-bye",
+               # Reconnect up to 2,000 times if we get disconnected (e.g. due
+               # to Sprout connection recycling) - this was chosen as an
+               # arbitrarily high number which we're unlikely to hit.
                "-max_reconnect", "2000",
-               "-reconnect_close", "true",
+               # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
+               "-reconnect_close", "false",
                "-reconnect_sleep", "1",
                "-t", "t1"]
 
