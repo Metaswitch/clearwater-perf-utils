@@ -57,11 +57,11 @@ SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
 LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(os.getpid())
 
-INITIAL_REG_ERRORS = LOG_PREFIX + "initialreg_errors.log"
-RE_REG_ERRORS = LOG_PREFIX + "rereg_errors.log"
+INITIAL_REG_ERRORS = LOG_PREFIX + "initial_reg_errors.log"
+RE_REG_ERRORS = LOG_PREFIX + "re_reg_errors.log"
 CALLER_ERRORS = LOG_PREFIX + "caller_errors.log"
 CALLEE_ERRORS = LOG_PREFIX + "callee_errors.log"
-RE_REG_STATS  = LOG_PREFIX + "rereg_stats.log"
+RE_REG_STATS  = LOG_PREFIX + "re_reg_stats.log"
 CALLER_STATS  = LOG_PREFIX + "caller_stats.log"
 
 BHCA = 1.3
@@ -70,7 +70,7 @@ BHCA = 1.3
 # calls, so divide by 2 to figure out how many calls we need to make. (Calls we
 # make will terminate on-net, providing the other 50%).
 OUTGOING_BHCA = BHCA/2.0
-REREG_PER_HOUR = 2.0
+RE_REG_PER_HOUR = 2.0
 
 # Get command-line arguments
 
@@ -84,6 +84,7 @@ parser.add_argument('--icscf-target', help='Domain/IP and port to target registr
 parser.add_argument('--scscf-target', help='Domain/IP and port to target call stress at. (default: sprout.{domain}:5052)')
 parser.add_argument('--call-length', help='Call length in seconds (default: 5)', type=int, default=5)
 parser.add_argument('--sipp-output', help='Show SIPp output screen', action='store_const', const=True, default=False)
+parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', action='store_const', const=True, default=False)
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
@@ -97,7 +98,7 @@ if args.scscf_target is None:
     args.scscf_target = "sprout.{}:5054".format(args.domain)
 
 # Calculate calls/registers per second based on the input
-RPS = REREG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
+RPS = RE_REG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
 CPS = OUTGOING_BHCA * args.subscriber_count * args.multiplier / 3600
 
 # Given the duration, how many registers/calls do we need to make?
@@ -144,20 +145,27 @@ common_args = ["-key", "home_domain", args.domain,
                "-default_behaviors", "all,-bye",
                "-t", "t1"]
 
+if args.aka:
+    initial_reg_xml = "aka_initial_register.xml"
+    re_reg_xml = "aka_re_register.xml"
+else:
+    initial_reg_xml = "digest_register.xml"
+    re_reg_xml = "digest_register.xml"
+
 initial_reg_cmd = [SIPP_BIN,
-                   "-sf", SCRIPTS_DIR + "register.xml",
+                   "-sf", SCRIPTS_DIR + initial_reg_xml,
                    "-inf", register_csv.name,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
-rereg_cmd = [SIPP_BIN,
-             "-sf", SCRIPTS_DIR + "register.xml",
-             "-inf", register_csv.name,
-             "-trace_err", "-error_file", RE_REG_ERRORS,
-             "-trace_stat", "-stf", RE_REG_STATS,
-             "-r", str(RPS),
-             "-m", str(REG_MAX)] + common_args + [args.icscf_target]
+re_reg_cmd = [SIPP_BIN,
+              "-sf", SCRIPTS_DIR + re_reg_xml,
+              "-inf", register_csv.name,
+              "-trace_err", "-error_file", RE_REG_ERRORS,
+              "-trace_stat", "-stf", RE_REG_STATS,
+              "-r", str(RPS),
+              "-m", str(REG_MAX)] + common_args + [args.icscf_target]
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
@@ -214,7 +222,7 @@ start_time = datetime.now()
 
 # Get a SIPp process to do re-registrations, unless all we're making is a single call.
 if not args.single:
-    rereg_proc = Popen(rereg_cmd, stdout=null, stderr=null)
+    re_reg_proc = Popen(re_reg_cmd, stdout=null, stderr=null)
 
 callee_proc = Popen(callee_cmd, stdout=null, stderr=null)
 
@@ -228,7 +236,7 @@ else:
 caller_proc.wait()
 
 if not args.single:
-    rereg_proc.wait()
+    re_reg_proc.wait()
 
 # Kill the callee SIPp process - it might not naturally terminate (for example,
 # if not all the attempted calls get through to it, so it never hits its call
