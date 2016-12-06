@@ -54,9 +54,6 @@ class SIPpstats(csv.excel):
 SIPP_BIN = "/usr/share/clearwater/bin/sipp_coreonly"
 SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
-REGISTER_CSV = NamedTemporaryFile(prefix="sipp_register")
-INVITE_CSV = NamedTemporaryFile(prefix="sipp_calls")
-
 LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(os.getpid())
 
 INITIAL_REG_ERRORS = LOG_PREFIX + "initialreg_errors.log"
@@ -117,15 +114,18 @@ shuffle(callees)
 
 # Generate the CSV input files - one for REGISTER messages with one user per
 # line, one for INVITE flows with a caller/callee pair on each line
-REGISTER_CSV.write("SEQUENTIAL\n")
-for s in registers:
-    REGISTER_CSV.write("{}\n".format(s))
-REGISTER_CSV.flush()
+register_csv = NamedTemporaryFile(prefix="sipp_register")
+invite_csv = NamedTemporaryFile(prefix="sipp_calls")
 
-INVITE_CSV.write("SEQUENTIAL\n")
+register_csv.write("SEQUENTIAL\n")
+for s in registers:
+    register_csv.write("{}\n".format(s))
+register_csv.flush()
+
+invite_csv.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
-    INVITE_CSV.write("{};{}\n".format(caller, callee))
-INVITE_CSV.flush()
+    invite_csv.write("{};{}\n".format(caller, callee))
+invite_csv.flush()
 
 null = open("/dev/null", "w+")
 
@@ -135,14 +135,14 @@ common_args = ["-key", "home_domain", args.domain,
 
 initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + "register.xml",
-                   "-inf", REGISTER_CSV.name,
+                   "-inf", register_csv.name,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_args + [args.icscf_target]
 
 rereg_cmd = [SIPP_BIN,
              "-sf", SCRIPTS_DIR + "register.xml",
-             "-inf", REGISTER_CSV.name,
+             "-inf", register_csv.name,
              "-trace_err", "-error_file", RE_REG_ERRORS,
              "-trace_stat", "-stf", RE_REG_STATS,
              "-r", str(RPS),
@@ -150,7 +150,7 @@ rereg_cmd = [SIPP_BIN,
 
 caller_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "caller.xml",
-              "-inf", INVITE_CSV.name,
+              "-inf", invite_csv.name,
               "-trace_err", "-error_file", CALLER_ERRORS,
               "-trace_stat", "-stf", CALLER_STATS,
               "-r", str(CPS),
@@ -282,4 +282,4 @@ Average time from REGISTER to 200 OK: {} ms""".format(
     row['Retransmissions(C)'],
     rtt)
 
-print "\nLog files in /var/log/clearwater-sip-stress, with prefix {}".format(os.getpid())
+print "\nLog files at {}*".format(LOG_PREFIX)
