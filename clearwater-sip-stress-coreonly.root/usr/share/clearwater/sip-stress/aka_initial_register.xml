@@ -32,6 +32,7 @@
   <recv response="401" auth="true">
   </recv>
 
+  <!-- Authenticate using a hardcoded XRES matching the one in the Husk HSS. -->
   <send retrans="500">
     <![CDATA[
 
