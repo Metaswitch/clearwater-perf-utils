@@ -32,8 +32,8 @@
       [last_P-Charging-Vector:]
       P-Asserted-Identity: sip:[$dn]@[$home_domain]
       Contact: <sip:[$dn]@[local_ip]:[local_port];transport=[transport]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video
+      Record-Route: <sip:[local_ip]:[local_port];transport=[transport];lr>
       [last_Record-Route:]
-      Record-Route: <sip:[local_ip]:[local_port];transport=[transport]>
       Content-Type: application/sdp
       Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,INFO,REFER,NOTIFY,MESSAGE,PRACK
       P-Access-Network-Info: 3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=0010100011a2d051
