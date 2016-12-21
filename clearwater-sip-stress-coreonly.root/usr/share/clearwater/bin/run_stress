@@ -149,6 +149,9 @@ common_args = ["-default_behaviors", "all,-bye",
                # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
                "-reconnect_close", "false",
                "-reconnect_sleep", "1",
+               # If SIPp doesn't have standard input (e.g. when run through
+               # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
+               "-nostdin",
                "-t", "t1"]
 
 common_originating_args = common_args + ["-key", "home_domain", args.domain]
