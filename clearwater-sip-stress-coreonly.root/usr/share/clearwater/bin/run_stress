@@ -55,15 +55,6 @@ class SIPpstats(csv.excel):
 SIPP_BIN = "/usr/share/clearwater/bin/sipp_coreonly"
 SCRIPTS_DIR = "/usr/share/clearwater/sip-stress/"
 
-LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(os.getpid())
-
-INITIAL_REG_ERRORS = LOG_PREFIX + "initial_reg_errors.log"
-RE_REG_ERRORS = LOG_PREFIX + "re_reg_errors.log"
-CALLER_ERRORS = LOG_PREFIX + "caller_errors.log"
-CALLEE_ERRORS = LOG_PREFIX + "callee_errors.log"
-RE_REG_STATS  = LOG_PREFIX + "re_reg_stats.log"
-CALLER_STATS  = LOG_PREFIX + "caller_stats.log"
-
 BHCA = 1.3
 
 # Call attempts are split 50/50 between originating calls and terminating
@@ -88,8 +79,19 @@ parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', ac
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
+parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=int, default=os.getpid())
 
 args = parser.parse_args()
+
+LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(args.log_prefix)
+
+INITIAL_REG_ERRORS = LOG_PREFIX + "initial_reg_errors.log"
+RE_REG_ERRORS = LOG_PREFIX + "re_reg_errors.log"
+CALLER_ERRORS = LOG_PREFIX + "caller_errors.log"
+CALLEE_ERRORS = LOG_PREFIX + "callee_errors.log"
+RE_REG_STATS  = LOG_PREFIX + "re_reg_stats.log"
+CALLER_STATS  = LOG_PREFIX + "caller_stats.log"
+
 
 if args.icscf_target is None:
     args.icscf_target = "sprout.{}:5052".format(args.domain)
@@ -257,6 +259,8 @@ callee_proc.kill()
 print "Test complete"
 end_time = datetime.now()
 
+rc = 0
+
 with open(CALLER_STATS) as f:
     r = DictReader(f, dialect=SIPpstats())
     # Iterate over the whole file so that `row` is set to the last row
@@ -302,6 +306,12 @@ Average time from INVITE to 180 Ringing: {} ms
     row['ResponseTimeRepartition1_>=2000'],
     100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
 
+    if int(row['FailedCall(C)'] > 0:
+        rc = 1
+
+    if rtt > 150:
+        rc = 2
+
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
     with open(RE_REG_STATS) as f:
         r = DictReader(f, dialect=SIPpstats())
@@ -326,4 +336,9 @@ Average time from REGISTER to 200 OK: {} ms""".format(
         row['Retransmissions(C)'],
         rtt)
 
+        if int(row['FailedCall(C)'] > 0:
+            rc = 3
+
 print "\nLog files at {}*".format(LOG_PREFIX)
+
+sys.exit(rc)
