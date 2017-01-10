@@ -10,7 +10,7 @@
       To: <sip:[field1]@[home_domain]>
       CSeq: 1 INVITE
       Expires: 180
-      Route: <sip:scscf.sprout.[home_domain]:5054;transport=tcp;lr;orig>
+      Route: <sip:scscf@[remote_ip]:5054;transport=tcp;lr;orig>
       Content-Length: [len]
       Call-Info: <sip:[local_ip]:[local_port]>;method="NOTIFY;Event=telephone-event;Duration=2000"
       P-Charging-Function-Addresses: ccf=0.0.0.0
