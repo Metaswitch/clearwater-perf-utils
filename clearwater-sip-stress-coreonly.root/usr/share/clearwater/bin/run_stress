@@ -80,6 +80,7 @@ parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some in
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
 parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=int, default=os.getpid())
+parser.add_argument('--target-latency', help='Target average latency.  The script will fail if the mean time from INVITE to 180 Ringing is higher than this.', type=int)
 
 args = parser.parse_args()
 
@@ -309,7 +310,7 @@ Average time from INVITE to 180 Ringing: {} ms
     if int(row['FailedCall(C)'] > 0:
         rc = 1
 
-    if rtt > 150:
+    if args.target_latency and rtt > args.target_latency:
         rc = 2
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
