@@ -10,7 +10,7 @@
       To: <sip:[field1]@[home_domain]>
       CSeq: 1 INVITE
       Expires: 180
-      Route: <sip:scscf@[remote_ip]:5054;transport=tcp;lr;orig>
+      Route: <sip:[remote_ip]:5054;transport=tcp;lr;orig;service=scscf>
       Content-Length: [len]
       Call-Info: <sip:[local_ip]:[local_port]>;method="NOTIFY;Event=telephone-event;Duration=2000"
       P-Charging-Function-Addresses: ccf=0.0.0.0
@@ -89,7 +89,7 @@
 
     ]]>
   </send>
-  
+
   <recv response="200">
   </recv>
 
@@ -148,11 +148,11 @@
 
        - we use 201, not 200, as the UPDATE response code (this is fine because
          it's still in the 2xx class)
- 
+
        - we expect the UPDATE response as an optional message in the two places
          we've seen it appear, before and after the 180 Ringing
   -->
-  
+
   <recv response="201" optional="true">
   </recv>
 
