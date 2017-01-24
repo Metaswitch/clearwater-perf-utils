@@ -14,7 +14,7 @@
 	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
 	Supported: path
 	To: <sip:[field0]@[home_domain]>
-	Route: <sip:icscf@[remote_ip];lr>
+	Route: <sip:[remote_ip];lr;service=icscf>
 	Max-Forwards: 70
 	Contact: sip:[field0]@[local_ip]:[local_port]
 	Call-ID: [call_id]
@@ -44,7 +44,7 @@
 	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
 	Supported: path
 	To: <sip:[field0]@[home_domain]>
-	Route: <sip:icscf@[remote_ip];lr>
+	Route: <sip:[remote_ip];lr;service=icscf>
 	Max-Forwards: 70
 	Contact: sip:[field0]@[local_ip]:[local_port]
 	Call-ID: [call_id]
