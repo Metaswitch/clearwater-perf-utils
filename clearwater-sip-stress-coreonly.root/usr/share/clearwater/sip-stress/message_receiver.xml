@@ -17,7 +17,7 @@
       Content-Length: 0
       Supported: 100rel,timer,precondition,histinfo
       [last_P-Charging-Vector:]
-      Contact: <sip:[$dn]@[local_ip]:[local_port];transport=[transport]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video
+      Contact: <sip:ipsmgw@[local_ip]:[local_port];transport=[transport]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video
       Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,INFO,REFER,NOTIFY,MESSAGE,PRACK
       P-Access-Network-Info: 3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=0010100011a2d051
       User-Agent: BBBBBBB IMS 0.0

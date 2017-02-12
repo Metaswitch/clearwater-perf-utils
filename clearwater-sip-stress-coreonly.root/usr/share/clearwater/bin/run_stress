@@ -41,6 +41,7 @@ from sys import exit
 from time import sleep
 from tempfile import NamedTemporaryFile
 import os
+import sys
 
 # Set up a CSV Dialect subclass to handle the semicolon-separated stats files
 # SIPp produces
@@ -79,9 +80,9 @@ parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', ac
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
-parser.add_argument('--with-errors', help='10% of calls should get error responses', action='store_const', const=True, default=False)
+parser.add_argument('--with-errors', help='10%% of calls should get error responses', action='store_const', const=True, default=False)
 parser.add_argument('--messages', help='Use MESSAGE flows instead of INVITE flows', action='store_const', const=True, default=False)
-parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=int, default=os.getpid())
+parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=str, default=str(os.getpid()))
 parser.add_argument('--target-latency', help='Target average latency.  The script will fail if the mean time from INVITE to 180 Ringing is higher than this.', type=int)
 
 args = parser.parse_args()
@@ -328,6 +329,10 @@ Average time from INVITE to 180 Ringing: {} ms
         100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_>=2000'],
         100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
+    
+        if args.target_latency and rtt > args.target_latency:
+            rc = 2
+
     else:
         print """
 Elapsed time: {}
@@ -348,11 +353,8 @@ Failed MESSAGE flows: {} ({}%)
         100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']))
  
 
-    if int(row['FailedCall(C)'] > 0:
+    if int(row['FailedCall(C)']) > 0:
         rc = 1
-
-    if args.target_latency and rtt > args.target_latency:
-        rc = 2
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
     with open(RE_REG_STATS) as f:
@@ -378,7 +380,7 @@ Average time from REGISTER to 200 OK: {} ms""".format(
         row['Retransmissions(C)'],
         rtt)
 
-        if int(row['FailedCall(C)'] > 0:
+        if int(row['FailedCall(C)']) > 0:
             rc = 3
 
 print "\nLog files at {}*".format(LOG_PREFIX)
