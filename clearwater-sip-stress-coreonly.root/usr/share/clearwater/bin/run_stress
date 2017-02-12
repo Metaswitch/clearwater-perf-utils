@@ -88,6 +88,8 @@ parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', ac
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
+parser.add_argument('--with-errors', help='10% of calls should get error responses', action='store_const', const=True, default=False)
+parser.add_argument('--messages', help='Use MESSAGE flows instead of INVITE flows', action='store_const', const=True, default=False)
 
 args = parser.parse_args()
 
@@ -178,8 +180,15 @@ re_reg_cmd = [SIPP_BIN,
               "-r", str(RPS),
               "-m", str(REG_MAX)] + common_originating_args + [args.icscf_target]
 
+if args.messages:
+    caller_file = "message_sender.xml"
+    callee_file = "error_message_receiver.xml" if args.with_errors else "message_receiver.xml"
+else:
+    caller_file = "caller.xml"
+    callee_file = "error_callee.xml" if args.with_errors else "callee.xml"
+
 caller_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + "caller.xml",
+              "-sf", SCRIPTS_DIR + caller_file,
               "-inf", invite_csv.name,
               "-trace_err", "-error_file", CALLER_ERRORS,
               "-trace_stat", "-stf", CALLER_STATS,
@@ -190,8 +199,9 @@ caller_cmd = [SIPP_BIN,
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
 
+
 callee_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + "callee.xml",
+              "-sf", SCRIPTS_DIR + callee_file,
               "-trace_err", "-error_file", CALLEE_ERRORS,
               "-p", "5082",
               "-m", str(CALL_MAX)] + common_args
@@ -262,9 +272,10 @@ with open(CALLER_STATS) as f:
     # Iterate over the whole file so that `row` is set to the last row
     for row in r:
         pass
-    hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
-    rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
-    print """
+    if not args.messages:
+        hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
+        rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
+        print """
 Elapsed time: {}
 Start: {}
 End: {}
@@ -281,26 +292,45 @@ Average time from INVITE to 180 Ringing: {} ms
 # of calls with 20-200ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 200-2000ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 2000+ms from INVITE to 180 Ringing: {} ({}%)""".format(
-    row['ElapsedTime(C)'],
-    start_time,
-    end_time,
-    row['TotalCallCreated'],
-    row['SuccessfulCall(C)'],
-    100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
-    row['FailedCall(C)'],
-    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
-    row['Retransmissions(C)'],
-    rtt,
-    row['ResponseTimeRepartition1_<2'],
-    100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
-    row['ResponseTimeRepartition1_<20'],
-    100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
-    row['ResponseTimeRepartition1_<200'],
-    100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
-    row['ResponseTimeRepartition1_<2000'],
-    100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
-    row['ResponseTimeRepartition1_>=2000'],
-    100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
+        row['ElapsedTime(C)'],
+        start_time,
+        end_time,
+        row['TotalCallCreated'],
+        row['SuccessfulCall(C)'],
+        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        row['FailedCall(C)'],
+        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+        row['Retransmissions(C)'],
+        rtt,
+        row['ResponseTimeRepartition1_<2'],
+        100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<20'],
+        100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<200'],
+        100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<2000'],
+        100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_>=2000'],
+        100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
+    else:
+        print """
+Elapsed time: {}
+Start: {}
+End: {}
+
+Total MESSAGE flows: {}
+Successful MESSAGE flows: {} ({}%)
+Failed MESSAGE flows: {} ({}%)
+""".format(
+        row['ElapsedTime(C)'],
+        start_time,
+        end_time,
+        row['TotalCallCreated'],
+        row['SuccessfulCall(C)'],
+        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        row['FailedCall(C)'],
+        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']))
+ 
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
     with open(RE_REG_STATS) as f:
