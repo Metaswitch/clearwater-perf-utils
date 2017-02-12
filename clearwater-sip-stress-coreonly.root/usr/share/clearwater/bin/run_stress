@@ -119,6 +119,12 @@ registers = range(SUB_START, SUB_END)
 callers = range(SUB_START, SUB_END, 2)
 callees = range(SUB_START + 1, SUB_END, 2)
 
+# Convert the duration into seconds for a SIPp timeout, and add a safety factor
+sipp_timeout = "{}s".format((args.duration * 60) + 120)
+
+initial_reg_duration = args.subscriber_count/args.initial_reg_rate
+initial_reg_timeout = "{}s".format(initial_reg_duration + 120)
+
 # Randomly shuffle the order of registers and calls to reduce the risk of any cache issues
 shuffle(registers)
 shuffle(callers)
@@ -149,6 +155,7 @@ common_args = ["-default_behaviors", "all,-bye",
                # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
                "-reconnect_close", "false",
                "-reconnect_sleep", "1",
+               "-recv_timeout", "20s",
                "-t", "t1"]
 
 common_originating_args = common_args + ["-key", "home_domain", args.domain]
@@ -164,6 +171,7 @@ initial_reg_cmd = [SIPP_BIN,
                    "-sf", SCRIPTS_DIR + initial_reg_xml,
                    "-inf", register_csv.name,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
+                   "-timeout", initial_reg_timeout,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_originating_args + [args.icscf_target]
 
@@ -172,6 +180,7 @@ re_reg_cmd = [SIPP_BIN,
               "-inf", register_csv.name,
               "-trace_err", "-error_file", RE_REG_ERRORS,
               "-trace_stat", "-stf", RE_REG_STATS,
+              "-timeout", sipp_timeout,
               "-r", str(RPS),
               "-m", str(REG_MAX)] + common_originating_args + [args.icscf_target]
 
@@ -180,6 +189,7 @@ caller_cmd = [SIPP_BIN,
               "-inf", invite_csv.name,
               "-trace_err", "-error_file", CALLER_ERRORS,
               "-trace_stat", "-stf", CALLER_STATS,
+              "-timeout", sipp_timeout,
               "-r", str(CPS),
               "-d", str(args.call_length * 1000),
               "-m", str(CALL_MAX)] + common_originating_args + [args.scscf_target]
@@ -190,13 +200,14 @@ caller_cmd = [SIPP_BIN,
 callee_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + "callee.xml",
               "-trace_err", "-error_file", CALLEE_ERRORS,
+              "-timeout", sipp_timeout,
               "-p", "5082",
               "-m", str(CALL_MAX)] + common_args
 
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
 
-print "Starting initial registration, will take {} seconds".format(args.subscriber_count/args.initial_reg_rate)
+print "Starting initial registration, will take {} seconds".format(initial_reg_duration)
 
 if args.sipp_output:
     proc = Popen(initial_reg_cmd)
