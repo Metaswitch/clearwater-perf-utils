@@ -16,7 +16,7 @@
 	To: <sip:[field0]@[home_domain]>
 	Route: <sip:icscf@[remote_ip];lr>
 	Max-Forwards: 70
-	Contact: sip:[field0]@[local_ip]:[local_port]
+	Contact: <sip:[field0]@[local_ip]:[local_port]>;reg-id=1;+sip.instance="<urn:uuid:00000000-0000-0000-0000-000000000001>"
 	Call-ID: [call_id]
 	CSeq: 1 REGISTER
 	Expires: 3600
@@ -46,7 +46,7 @@
 	To: <sip:[field0]@[home_domain]>
 	Route: <sip:icscf@[remote_ip];lr>
 	Max-Forwards: 70
-	Contact: sip:[field0]@[local_ip]:[local_port]
+	Contact: <sip:[field0]@[local_ip]:[local_port]>;reg-id=1;+sip.instance="<urn:uuid:00000000-0000-0000-0000-000000000001>"
 	Call-ID: [call_id]
 	CSeq: 1 REGISTER
 	Expires: 3600
