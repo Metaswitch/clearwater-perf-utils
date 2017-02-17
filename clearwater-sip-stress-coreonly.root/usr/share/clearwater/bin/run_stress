@@ -84,6 +84,8 @@ parser.add_argument('--with-errors', help='10%% of calls should get error respon
 parser.add_argument('--messages', help='Use MESSAGE flows instead of INVITE flows', action='store_const', const=True, default=False)
 parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=str, default=str(os.getpid()))
 parser.add_argument('--target-latency', help='Target average latency.  The script will fail if the mean time from INVITE to 180 Ringing is higher than this.', type=int)
+parser.add_argument('--target-call-success-rate', help='Target call success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
+parser.add_argument('--target-reg-success-rate', help='Target registration success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 
 args = parser.parse_args()
 
@@ -289,6 +291,9 @@ with open(CALLER_STATS) as f:
     # Iterate over the whole file so that `row` is set to the last row
     for row in r:
         pass
+
+    call_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+
     if not args.messages:
         hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
         rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
@@ -314,7 +319,7 @@ Average time from INVITE to 180 Ringing: {} ms
         end_time,
         row['TotalCallCreated'],
         row['SuccessfulCall(C)'],
-        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        call_success_rate,
         row['FailedCall(C)'],
         100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
         row['Retransmissions(C)'],
@@ -348,12 +353,12 @@ Failed MESSAGE flows: {} ({}%)
         end_time,
         row['TotalCallCreated'],
         row['SuccessfulCall(C)'],
-        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        call_success_rate,
         row['FailedCall(C)'],
         100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']))
  
 
-    if int(row['FailedCall(C)']) > 0:
+    if args.target_call_success_rate > call_success_rate:
         rc = 1
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
@@ -362,6 +367,8 @@ if not args.single: #  we didn't do re-registrations in this case, so won't have
         # Iterate over the whole file so that `row` is set to the last row
         for row in r:
             pass
+
+        reg_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
         hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
         rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
         print """
@@ -374,13 +381,13 @@ REGISTER retransmissions: {}
 Average time from REGISTER to 200 OK: {} ms""".format(
         row['TotalCallCreated'],
         row['SuccessfulCall(C)'],
-        100* float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        reg_success_rate,
         row['FailedCall(C)'],
         100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
         row['Retransmissions(C)'],
         rtt)
 
-        if int(row['FailedCall(C)']) > 0:
+        if args.target_reg_success_rate > reg_success_rate:
             rc = 3
 
 print "\nLog files at {}*".format(LOG_PREFIX)
