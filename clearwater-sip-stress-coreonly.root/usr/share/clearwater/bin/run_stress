@@ -292,7 +292,7 @@ with open(CALLER_STATS) as f:
     for row in r:
         pass
 
-    call_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+    call_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
 
     if not args.messages:
         hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
@@ -368,7 +368,7 @@ if not args.single: #  we didn't do re-registrations in this case, so won't have
         for row in r:
             pass
 
-        reg_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated']),
+        reg_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
         hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
         rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
         print """
