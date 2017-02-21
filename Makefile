@@ -16,4 +16,14 @@ include build-infra/cw-deb.mk
 .PHONY: deb
 deb: build deb-only
 
+libraries/libtinfo.so.5:
+	cp /lib/x86_64-linux-gnu/libtinfo.so.5 $@
+
+libraries/ld-linux-x86-64.so.2:
+	cp /lib64/ld-linux-x86-64.so.2 $@
+
+.PHONY: docker
+docker: libraries/libtinfo.so.5 libraries/ld-linux-x86-64.so.2 build
+	 docker build -t clearwater-stresstool .
+
 .PHONY: all build test clean distclean
