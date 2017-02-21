@@ -5,7 +5,7 @@ DEB_COMPONENT := clearwater-perf-utils
 DEB_NAMES := clearwater-sip-stress-coreonly
 
 build:
-	cd ./sipp && autoreconf -vifs && ./configure && make && mv sipp sipp_coreonly
+	cd ./sipp && autoreconf -vifs && LDFLAGS="-static-libgcc -static-libstdc++" ./configure && make && mv sipp sipp_coreonly
 
 clean:
 	${MAKE} -C ./sipp clean
