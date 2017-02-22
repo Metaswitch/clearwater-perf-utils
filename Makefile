@@ -4,8 +4,16 @@ DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
 DEB_COMPONENT := clearwater-perf-utils
 DEB_NAMES := clearwater-sip-stress-coreonly
 
-build:
-	cd ./sipp && autoreconf -vifs && LDFLAGS="-static-libgcc -static-libstdc++" ./configure && make && mv sipp sipp_coreonly
+build: sipp/sipp_coreonly
+
+sipp/configure: sipp/configure.ac
+	cd ./sipp && autoreconf -vifs
+
+sipp/Makefile: sipp/configure
+	cd ./sipp &&  LDFLAGS="-static-libgcc -static-libstdc++" ./configure
+
+sipp/sipp_coreonly: sipp/Makefile sipp/src/*
+	cd ./sipp && make && mv sipp sipp_coreonly
 
 clean:
 	${MAKE} -C ./sipp clean
