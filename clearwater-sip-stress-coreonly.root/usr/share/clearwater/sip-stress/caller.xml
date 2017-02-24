@@ -13,7 +13,7 @@
       Route: <sip:scscf@[remote_ip]:5054;transport=tcp;lr;orig>
       Content-Length: [len]
       Call-Info: <sip:[local_ip]:[local_port]>;method="NOTIFY;Event=telephone-event;Duration=2000"
-      P-Charging-Function-Addresses: ccf=0.0.0.0
+      P-Charging-Function-Addresses: ccf=[ccf_ip]
       Supported: timer,precondition,sec-agree,histinfo, 100rel
       P-Charging-Vector: icid-value=[pid]SIPpTag00[call_number]
       Contact: <sip:[field0]@[local_ip]:[local_port]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video;+sip.instance="<urn:gsma:imei:35283606-360704-0>"

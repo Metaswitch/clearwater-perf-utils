@@ -86,6 +86,7 @@ parser.add_argument('--log-prefix', help='Prefix for log files (default: the pro
 parser.add_argument('--target-latency', help='Target average latency.  The script will fail if the mean time from INVITE to 180 Ringing is higher than this.', type=int)
 parser.add_argument('--target-call-success-rate', help='Target call success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--target-reg-success-rate', help='Target registration success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
+parser.add_argument('--ccf', help='IP or hostname of the CCF to use.', type=str, default="0.0.0.0")
 
 args = parser.parse_args()
 
@@ -208,6 +209,7 @@ caller_cmd = [SIPP_BIN,
               "-trace_err", "-error_file", CALLER_ERRORS,
               "-trace_stat", "-stf", CALLER_STATS,
               "-timeout", sipp_timeout,
+              "-key", "ccf_ip", args.ccf,
               "-r", str(CPS),
               "-d", str(args.call_length * 1000),
               "-m", str(CALL_MAX)] + common_originating_args + [args.scscf_target]
