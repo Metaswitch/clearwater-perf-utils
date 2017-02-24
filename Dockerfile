@@ -1,4 +1,4 @@
-FROM frolvlad/alpine-glibc
+FROM frolvlad/alpine-glibc@sha256:88fcccb65e5a5166dde9583b0c2e7b6e418feb46697f80c1430776d431bdb494
 
 RUN apk add python --no-cache
 
