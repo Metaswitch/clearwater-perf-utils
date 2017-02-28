@@ -312,9 +312,14 @@ Retransmissions: {}
 
 Average time from INVITE to 180 Ringing: {} ms
 # of calls with 0-2ms from INVITE to 180 Ringing: {} ({}%)
-# of calls with 2-20ms from INVITE to 180 Ringing: {} ({}%)
-# of calls with 20-200ms from INVITE to 180 Ringing: {} ({}%)
-# of calls with 200-2000ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 2-10ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 10-20ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 20-50ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 50-100ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 100-200ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 200-500ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 500-1000ms from INVITE to 180 Ringing: {} ({}%)
+# of calls with 1000-2000ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 2000+ms from INVITE to 180 Ringing: {} ({}%)""".format(
         row['ElapsedTime(C)'],
         start_time,
@@ -328,10 +333,20 @@ Average time from INVITE to 180 Ringing: {} ms
         rtt,
         row['ResponseTimeRepartition1_<2'],
         100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<10'],
+        100* float(row['ResponseTimeRepartition1_<10']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_<20'],
         100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<50'],
+        100* float(row['ResponseTimeRepartition1_<50']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<100'],
+        100* float(row['ResponseTimeRepartition1_<100']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_<200'],
         100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<500'],
+        100* float(row['ResponseTimeRepartition1_<500']) / float(row['TotalCallCreated']),
+        row['ResponseTimeRepartition1_<1000'],
+        100* float(row['ResponseTimeRepartition1_<1000']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_<2000'],
         100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_>=2000'],
