@@ -147,7 +147,7 @@ invite_csv = NamedTemporaryFile(prefix="sipp_calls")
 
 register_csv.write("SEQUENTIAL\n")
 for s in registers:
-    if wildcards:
+    if args.wildcards:
         register_csv.write("{}&000\n".format(s))
     else:
         register_csv.write("{}\n".format(s))
@@ -155,7 +155,7 @@ register_csv.flush()
 
 invite_csv.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
-    if wildcards:
+    if args.wildcards:
         # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
         # the callee's wildcard, and the caller's P-Profile-Key
         invite_csv.write("{0}&45678;{1}&9877654;{0}&!.*!\n".format(caller, callee))
