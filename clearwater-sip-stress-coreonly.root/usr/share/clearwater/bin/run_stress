@@ -87,6 +87,7 @@ parser.add_argument('--target-latency', help='Target average latency.  The scrip
 parser.add_argument('--target-call-success-rate', help='Target call success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--target-reg-success-rate', help='Target registration success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--ccf', help='IP or hostname of the CCF to use.', type=str, default="0.0.0.0")
+parser.add_argument('--wildcards', help='Make the call flows involve wildcard IMPUs', action='store_const', const=True, default=False)
 
 args = parser.parse_args()
 
@@ -146,12 +147,20 @@ invite_csv = NamedTemporaryFile(prefix="sipp_calls")
 
 register_csv.write("SEQUENTIAL\n")
 for s in registers:
-    register_csv.write("{}\n".format(s))
+    if wildcards:
+        register_csv.write("{}&000\n".format(s))
+    else:
+        register_csv.write("{}\n".format(s))
 register_csv.flush()
 
 invite_csv.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
-    invite_csv.write("{};{}\n".format(caller, callee))
+    if wildcards:
+        # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
+        # the callee's wildcard, and the caller's P-Profile-Key
+        invite_csv.write("{0}&45678;{1}&9877654;{0}&!.*!\n".format(caller, callee))
+    else:
+        invite_csv.write("{};{}\n".format(caller, callee))
 invite_csv.flush()
 
 null = open("/dev/null", "w+")
