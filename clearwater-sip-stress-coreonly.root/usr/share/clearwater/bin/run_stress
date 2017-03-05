@@ -145,10 +145,15 @@ shuffle(callees)
 register_csv = NamedTemporaryFile(prefix="sipp_register")
 invite_csv = NamedTemporaryFile(prefix="sipp_calls")
 
+# For wildcard IMPU testing, we expect wildcarded IMPUs to prefix the
+# wildcarded part with a specific character. This makes it easy to mock out
+# HSSes and other components which recognise that these are wildcards.
+WILDCARD_DELIMITER = "$"
+
 register_csv.write("SEQUENTIAL\n")
 for s in registers:
     if args.wildcards:
-        register_csv.write("{}&000\n".format(s))
+        register_csv.write("{}{}000\n".format(s, WILDCARD_DELIMITER))
     else:
         register_csv.write("{}\n".format(s))
 register_csv.flush()
@@ -158,7 +163,7 @@ for caller, callee in zip(callers, callees):
     if args.wildcards:
         # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
         # the callee's wildcard, and the caller's P-Profile-Key
-        invite_csv.write("{0}&45678;{1}&9877654;{0}&!.*!\n".format(caller, callee))
+        invite_csv.write("{0}{2}45678;{1}{2}9877654;{0}{2}!.*!\n".format(caller, callee, WILDCARD_DELIMITER))
     else:
         invite_csv.write("{};{}\n".format(caller, callee))
 invite_csv.flush()
@@ -208,6 +213,9 @@ re_reg_cmd = [SIPP_BIN,
 if args.messages:
     caller_file = "message_sender.xml"
     callee_file = "error_message_receiver.xml" if args.with_errors else "message_receiver.xml"
+elif args.wildcards:
+    caller_file = "caller.xml"
+    callee_file = "wildcard_callee.xml"
 else:
     caller_file = "caller.xml"
     callee_file = "error_callee.xml" if args.with_errors else "callee.xml"
