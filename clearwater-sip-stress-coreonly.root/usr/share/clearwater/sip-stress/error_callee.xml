@@ -138,6 +138,10 @@
     ]]>
   </send>
 
+  <nop next="error" chance="0.10" />
+
+  <label id="success"/>
+
   <!-- Precondition exchange has completed, so start ringing -->
   <send>
     <![CDATA[
@@ -163,9 +167,6 @@
 
   <pause milliseconds="2300" />
 
-  <nop next="error" chance="0.10">
-
-  <label id="success"/>
   <send retrans="500">
     <![CDATA[
       SIP/2.0 200 OK
@@ -193,12 +194,12 @@
     ]]>
   </send>
 
-  <nop next="skip_error">
+  <nop next="skip_error" />
 
   <label id="error"/>
   <send retrans="500">
     <![CDATA[
-      SIP/2.0 404 Not Found
+      SIP/2.0 404 SIPp-Generated Not Found
       [last_Call-ID:]
       [$invite_cseq]
       [last_From:]
@@ -222,7 +223,11 @@
     ]]>
   </send>
 
-  <nop next="end">
+  <recv request="ACK"
+        crlf="true">
+  </recv>
+
+  <nop next="end" />
   
   <label id="skip_error"/>
 

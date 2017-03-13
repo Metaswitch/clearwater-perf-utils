@@ -10,10 +10,10 @@
       To: <sip:[field1]@[home_domain]>
       CSeq: 1 INVITE
       Expires: 180
-      Route: <sip:[remote_ip]:5054;transport=tcp;lr;orig;service=scscf>
+      Route: <sip:scscf@[remote_ip]:5054;transport=tcp;lr;orig>
       Content-Length: [len]
       Call-Info: <sip:[local_ip]:[local_port]>;method="NOTIFY;Event=telephone-event;Duration=2000"
-      P-Charging-Function-Addresses: ccf=0.0.0.0
+      P-Charging-Function-Addresses: ccf=[ccf_ip]
       Supported: timer,precondition,sec-agree,histinfo, 100rel
       P-Charging-Vector: icid-value=[pid]SIPpTag00[call_number]
       Contact: <sip:[field0]@[local_ip]:[local_port]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video;+sip.instance="<urn:gsma:imei:35283606-360704-0>"
@@ -89,7 +89,7 @@
 
     ]]>
   </send>
-
+  
   <recv response="200">
   </recv>
 
@@ -148,11 +148,11 @@
 
        - we use 201, not 200, as the UPDATE response code (this is fine because
          it's still in the 2xx class)
-
+ 
        - we expect the UPDATE response as an optional message in the two places
          we've seen it appear, before and after the 180 Ringing
   -->
-
+  
   <recv response="201" optional="true">
   </recv>
 
@@ -211,7 +211,7 @@
   </recv>
 
   <!-- definition of the response time repartition table (unit is ms)   -->
-  <ResponseTimeRepartition value="2, 20, 200, 2000"/>
+  <ResponseTimeRepartition value="2, 10, 20, 50, 100, 200, 500, 1000, 2000"/>
 
 </scenario>
 

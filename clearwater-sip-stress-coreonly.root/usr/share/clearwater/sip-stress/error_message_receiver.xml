@@ -4,7 +4,9 @@
 <scenario name="Clearwater callee">
   <recv request="MESSAGE" crlf="true">
   </recv>
+  <nop next="error" chance="0.10" />
 
+  <label id="success"/>
   <send>
     <![CDATA[
       SIP/2.0 200 OK
@@ -23,4 +25,26 @@
       User-Agent: BBBBBBB IMS 0.0
     ]]>
   </send>
+  <nop next="end" />
+
+  <label id="error"/>
+  <send>
+    <![CDATA[
+      SIP/2.0 404 Not Found
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Via:]
+      Server: SIP/2.0
+      Content-Length: 0
+      Supported: 100rel,timer,precondition,histinfo
+      [last_P-Charging-Vector:]
+      Contact: <sip:ipsmgw@[local_ip]:[local_port];transport=[transport]>;+g.3gpp.icsi-ref="urn%3Aurn-7%3A3gpp-service.ims.icsi.mmtel";video
+      Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,INFO,REFER,NOTIFY,MESSAGE,PRACK
+      P-Access-Network-Info: 3GPP-E-UTRAN-FDD;utran-cell-id-3gpp=0010100011a2d051
+      User-Agent: BBBBBBB IMS 0.0
+    ]]>
+  </send>
+  <label id="end"/>
 </scenario>

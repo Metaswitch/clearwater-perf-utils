@@ -14,9 +14,9 @@
 	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
 	Supported: path
 	To: <sip:[field0]@[home_domain]>
-	Route: <sip:[remote_ip];lr;service=icscf>
+	Route: <sip:icscf@[remote_ip];lr>
 	Max-Forwards: 70
-	Contact: sip:[field0]@[local_ip]:[local_port]
+	Contact: <sip:[field0]@[local_ip]:[local_port]>;reg-id=1;+sip.instance="<urn:uuid:00000000-0000-0000-0000-000000000001>"
 	Call-ID: [call_id]
 	CSeq: 1 REGISTER
 	Expires: 3600
@@ -34,6 +34,6 @@
 
 
   <!-- definition of the response time repartition table (unit is ms)   -->
-  <ResponseTimeRepartition value="2, 20, 200, 2000"/>
+  <ResponseTimeRepartition value="2, 10, 20, 50, 100, 200, 500, 1000, 2000"/>
 </scenario>
 
