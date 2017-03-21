@@ -29,6 +29,7 @@
       Call-ID: [call_id]
       Max-Forwards: 69
       P-Visited-Network-ID: [home_domain]
+      [field2]
       Accept: application/sdp, application/dtmf-relay
 
       v=0
