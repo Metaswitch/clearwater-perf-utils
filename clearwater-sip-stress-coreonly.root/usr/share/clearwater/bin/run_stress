@@ -32,7 +32,7 @@
 # as those licenses appear in the file LICENSE-OPENSSL.
 
 from random import shuffle
-from subprocess import Popen
+from subprocess import Popen, check_output
 from csv import DictReader, Dialect
 from datetime import datetime
 import csv
@@ -156,6 +156,8 @@ invite_csv.flush()
 
 null = open("/dev/null", "w+")
 
+ipv6_addr = check_output("ifconfig eth0 | grep inet6 | grep Global | grep -Eo \"[a-f0-9]{4}:[a-f0-9:]+\" | head -n 1", shell=True).strip()
+
 common_args = ["-default_behaviors", "all,-bye",
                # Reconnect up to 2,000 times if we get disconnected (e.g. due
                # to Sprout connection recycling) - this was chosen as an
@@ -168,7 +170,8 @@ common_args = ["-default_behaviors", "all,-bye",
                # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
                "-nostdin",
                "-recv_timeout", "20s",
-               "-t", "t1"]
+               "-t", "t1",
+               "-i", ipv6_addr]
 
 common_originating_args = common_args + ["-key", "home_domain", args.domain]
 
