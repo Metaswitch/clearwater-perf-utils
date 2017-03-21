@@ -15,6 +15,9 @@ sipp/Makefile: sipp/configure
 sipp/sipp_coreonly: sipp/Makefile sipp/src/*
 	cd ./sipp && make && mv sipp sipp_coreonly
 
+sipp/sipp_static: sipp/Makefile sipp/src/*
+	cd ./sipp && make sipp_static
+
 clean:
 	${MAKE} -C ./sipp clean
 	rm ./sipp/sipp_coreonly
