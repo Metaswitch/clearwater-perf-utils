@@ -80,6 +80,7 @@ parser.add_argument('--aka', help='Use AKAv1 authentication, not SIP Digest', ac
 parser.add_argument('--ignore-initial-reg-failures', help="Don't exit if some initial REGISTER messages fail", action='store_const', const=True, default=False)
 parser.add_argument('--single', help="Make one REGISTER, pause for 2 minutes, then make one call. Ignores subscriber count and duration", action='store_const', const=True, default=False)
 parser.add_argument('--base-number', help='First number in the number range for subscribers (default: 2010000000)', type=int, default=2010000000)
+parser.add_argument('--with-redirection', help='Causes the callee to respond to the INVITE with a 302 Moved Temporarily message. See callee_redirection.xml for details', action='store_const', const=True, default=False)
 parser.add_argument('--with-errors', help='10%% of calls should get error responses', action='store_const', const=True, default=False)
 parser.add_argument('--messages', help='Use MESSAGE flows instead of INVITE flows', action='store_const', const=True, default=False)
 parser.add_argument('--log-prefix', help='Prefix for log files (default: the process ID)', type=str, default=str(os.getpid()))
@@ -87,6 +88,7 @@ parser.add_argument('--target-latency', help='Target average latency.  The scrip
 parser.add_argument('--target-call-success-rate', help='Target call success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--target-reg-success-rate', help='Target registration success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--ccf', help='IP or hostname of the CCF to use.', type=str, default="0.0.0.0")
+
 
 args = parser.parse_args()
 
@@ -217,6 +219,8 @@ caller_cmd = [SIPP_BIN,
 # Callee must listen on port 5082, because this is what's in the Path header in
 # register.xml.
 
+if args.with_redirection:
+    callee_file = "callee_redirection.xml"
 
 callee_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + callee_file,
