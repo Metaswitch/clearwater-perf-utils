@@ -17,6 +17,8 @@
     </action>
   </nop>
 
+  <!-- Here we send two 302 messages to simulate nested redirection and to
+       increase load on the BGCF -->
   <send>
     <![CDATA[
       SIP/2.0 302 Moved Temporarily 
