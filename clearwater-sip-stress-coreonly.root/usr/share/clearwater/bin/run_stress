@@ -166,7 +166,7 @@ for caller, callee in zip(callers, callees):
     if args.wildcards:
         # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
         # the callee's wildcard, and the caller's P-Profile-Key
-        invite_csv.write("{0}{2}45678;{1}{2}9877654;P-Profile-Key:  {0}{2}!.*!\n".format(caller, callee, WILDCARD_DELIMITER))
+        invite_csv.write("{0}{2}45678;{1}{2}9877654;P-Profile-Key:  {0}{2}!.*!@{3}\n".format(caller, callee, WILDCARD_DELIMITER, args.domain))
     else:
         invite_csv.write("{};{};X-Dummy-Header: abcd\n".format(caller, callee))
 invite_csv.flush()
