@@ -4,7 +4,7 @@
 <scenario name="Clearwater caller">
   <send retrans="500" start_txn="invite">
     <![CDATA[
-      INVITE sip:[field1]@[home_domain];user=notphone SIP/2.0
+      INVITE [field3] SIP/2.0
       Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
       From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
       To: <sip:[field1]@[home_domain]>

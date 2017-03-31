@@ -164,11 +164,13 @@ register_csv.flush()
 invite_csv.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
     if args.wildcards:
+        req_uri = "sip:{0}{1}9877654@{2}".format(callee, WILDCARD_DELIMITER, args.domain)
         # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
         # the callee's wildcard, and the caller's P-Profile-Key
-        invite_csv.write("{0}{2}45678;{1}{2}9877654;P-Profile-Key:  sip:{0}{2}!.*!@{3}\n".format(caller, callee, WILDCARD_DELIMITER, args.domain))
+        invite_csv.write("{0}{2}45678;{1}{2}9877654;P-Profile-Key:  sip:{0}{2}!.*!@{3};{4}\n".format(caller, callee, WILDCARD_DELIMITER, args.domain, req_uri))
     else:
-        invite_csv.write("{};{};X-Dummy-Header: abcd\n".format(caller, callee))
+        req_uri = "sip:{}@{};user=phone".format(callee, args.domain)
+        invite_csv.write("{};{};X-Dummy-Header: abcd;{}\n".format(caller, callee, req_uri))
 invite_csv.flush()
 
 null = open("/dev/null", "w+")
