@@ -169,9 +169,9 @@ for caller, callee in zip(callers, callees):
         callee = "{}{}9877654".format(callee, WILDCARD_DELIMITER)
         req_uri = "sip:{}@{}".format(callee, args.domain)
 
-        # We want a small number of calls to not include a P-Profile-Key
+        # We want some calls to not include a P-Profile-Key
         # header, as that's a valid flow
-        if random() > 0.05:
+        if random() > 0.5:
             header = "P-Profile-Key:  {}".format(wildcard_callee)
         else:
             header = "X-Dummy-Header: abcd"
