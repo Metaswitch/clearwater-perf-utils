@@ -32,7 +32,7 @@
 # as those licenses appear in the file LICENSE-OPENSSL.
 
 from random import shuffle
-from subprocess import Popen
+from subprocess import Popen, check_output
 from csv import DictReader, Dialect
 from datetime import datetime
 import csv
@@ -88,6 +88,7 @@ parser.add_argument('--target-latency', help='Target average latency.  The scrip
 parser.add_argument('--target-call-success-rate', help='Target call success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--target-reg-success-rate', help='Target registration success rate.  The script will fail if the actual rate is lower.', type=float, default=100.0)
 parser.add_argument('--ccf', help='IP or hostname of the CCF to use.', type=str, default="0.0.0.0")
+parser.add_argument('--ipv6', help="Send traffic to an IPv6 system", action='store_const', const=True, default=False)
 
 
 args = parser.parse_args()
@@ -171,6 +172,15 @@ common_args = ["-default_behaviors", "all,-bye",
                "-nostdin",
                "-recv_timeout", "20s",
                "-t", "t1"]
+if args.ipv6:
+    # To send traffic to an IPv6 system, we need to pass SIPp the system's IPv6
+    # address. There's no nice, portable way to do this, so parse ifconfig's
+    # output.
+    #
+    # We could use https://pypi.python.org/pypi/netifaces here, but that would
+    # introduce an extra dependency.
+    ipv6_addr = check_output("ifconfig eth0 | grep inet6 | grep Global | grep -Eo \"[a-f0-9]{4}:[a-f0-9:]+\" | head -n 1", shell=True).strip()
+    common_args += ["-i", ipv6_addr]
 
 common_originating_args = common_args + ["-key", "home_domain", args.domain]
 
