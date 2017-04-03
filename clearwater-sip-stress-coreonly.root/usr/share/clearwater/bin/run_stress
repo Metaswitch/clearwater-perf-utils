@@ -31,7 +31,7 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-from random import shuffle
+from random import shuffle, random
 from subprocess import Popen, check_output
 from csv import DictReader, Dialect
 from datetime import datetime
@@ -164,10 +164,21 @@ register_csv.flush()
 invite_csv.write("SEQUENTIAL\n")
 for caller, callee in zip(callers, callees):
     if args.wildcards:
-        req_uri = "sip:{0}{1}9877654@{2}".format(callee, WILDCARD_DELIMITER, args.domain)
+        wildcard_callee = "sip:{}{}!.*!@{}".format(callee, WILDCARD_DELIMITER, args.domain)
+        caller = "{}{}45678".format(caller, WILDCARD_DELIMITER)
+        callee = "{}{}9877654".format(callee, WILDCARD_DELIMITER)
+        req_uri = "sip:{}@{}".format(callee, args.domain)
+
+        # We want some calls to not include a P-Profile-Key
+        # header, as that's a valid flow
+        if random() > 0.5:
+            header = "P-Profile-Key:  {}".format(wildcard_callee)
+        else:
+            header = "X-Dummy-Header: abcd"
+
         # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
         # the callee's wildcard, and the caller's P-Profile-Key
-        invite_csv.write("{0}{2}45678;{1}{2}9877654;P-Profile-Key:  sip:{0}{2}!.*!@{3};{4}\n".format(caller, callee, WILDCARD_DELIMITER, args.domain, req_uri))
+        invite_csv.write("{};{};{};{}\n".format(caller, callee, header, req_uri))
     else:
         req_uri = "sip:{}@{};user=phone".format(callee, args.domain)
         invite_csv.write("{};{};X-Dummy-Header: abcd;{}\n".format(caller, callee, req_uri))
