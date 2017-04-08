@@ -202,7 +202,9 @@ common_args = ["-default_behaviors", "all,-bye",
                # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
                "-nostdin",
                "-recv_timeout", "20s",
-               "-t", "t1"]
+               # Allow multiple parallel connections
+               "-t", "tn",
+               "-max_socket", "1000"]
 
 if args.ipv6:
     # To send traffic to an IPv6 system, we need to pass SIPp the system's IPv6
