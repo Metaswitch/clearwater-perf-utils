@@ -196,13 +196,15 @@ common_args = ["-default_behaviors", "all,-bye",
                # to Sprout connection recycling) - this was chosen as an
                # arbitrarily high number which we're unlikely to hit.
                "-max_reconnect", "2000",
-               # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
+               # Keep calls alive when we reconnect, and try and reconnect quickly.
                "-reconnect_close", "false",
-               "-reconnect_sleep", "1",
+               "-reconnect_sleep", "100",
                # If SIPp doesn't have standard input (e.g. when run through
                # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
                "-nostdin",
                "-recv_timeout", "20s",
+               "-watchdog_reset", "1m",
+               "-watchdog_minor_maxtriggers", "300",
                # Allow multiple parallel connections
                "-t", "tn",
                "-max_socket", "1000"]
