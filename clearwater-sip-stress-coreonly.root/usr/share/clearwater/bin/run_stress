@@ -43,6 +43,8 @@ from tempfile import NamedTemporaryFile
 import os
 import sys
 
+DEVNULL = open("/dev/null", "w+")
+
 # Set up a CSV Dialect subclass to handle the semicolon-separated stats files
 # SIPp produces
 class SIPpstats(csv.excel):
@@ -50,6 +52,252 @@ class SIPpstats(csv.excel):
         Dialect.__init__(self)
         self.quoting = csv.QUOTE_MINIMAL
         self.delimiter = ";"
+
+class LoadGenerator(object):
+    def __init__(self,
+                 index,
+                 subscriber_range,
+                 domain,
+                 duration,
+                 call_length_ms,
+                 initial_reg_rate,
+                 multiplier,
+                 icscf_target,
+                 scscf_target,
+                 single_call_mode,
+                 use_aka,
+                 use_ipv6,
+                 use_errors,
+                 use_messages,
+                 use_redirection,
+                 use_wildcards,
+                 log_prefix,
+                 ccf,
+                 sipp_output
+
+                 ):
+        self.users_to_register = subscriber_range
+        self.callers = subscriber_range[::2]
+        self.callees = subscriber_range[1::2]
+        shuffle(self.users_to_register)
+        shuffle(self.callers)
+        shuffle(self.callees)
+
+        self.domain = domain
+        self.call_length_ms = call_length_ms
+        self.initial_reg_rate = initial_reg_rate
+        self.use_wildcards = use_wildcards
+        self.use_ipv6 = use_ipv6
+        self.use_aka = use_aka
+        self.use_messages = use_messages
+        self.use_errors = use_errors
+        self.use_redirection = use_redirection
+        self.icscf_target = icscf_target
+        self.scscf_target = scscf_target
+        self.ccf = ccf
+        self.sipp_output = sipp_output
+
+        prefix = "{}_{}_".format(log_prefix, index)
+        self.initial_reg_errors = prefix + "initial_reg_errors.log"
+        self.re_reg_errors = prefix + "re_reg_errors.log"
+        self.caller_errors = prefix + "caller_errors.log"
+        self.callee_errors = prefix + "callee_errors.log"
+        self.re_reg_stats  = prefix + "re_reg_stats.log"
+        self.caller_stats  = prefix + "caller_stats.log"
+
+        # Calculate calls/registers per second based on the input
+        self.rps = RE_REG_PER_HOUR * len(subscriber_range) * multiplier / 3600
+        self.cps = OUTGOING_BHCA * len(subscriber_range) * multiplier / 3600
+
+        # Given the duration, how many registers/calls do we need to make?
+        self.reg_max = int(duration * 60 * self.rps)
+        self.call_max = int(duration * 60 * self.cps)
+
+        # Convert the duration into seconds for a SIPp timeout, and add a safety factor
+        self.sipp_timeout = "{}s".format((duration * 60) + 120)
+        self._setup_sipp()
+
+    def _setup_sipp(self):
+        # Generate the CSV input files - one for REGISTER messages with one user per
+        # line, one for INVITE flows with a caller/callee pair on each line
+        self.register_csv = NamedTemporaryFile(prefix="sipp_register")
+        self.invite_csv = NamedTemporaryFile(prefix="sipp_calls")
+
+        self.register_csv.write("SEQUENTIAL\n")
+        for s in self.users_to_register:
+            if self.use_wildcards:
+                self.register_csv.write("{}{}000\n".format(s, WILDCARD_DELIMITER))
+            else:
+                self.register_csv.write("{}\n".format(s))
+        self.register_csv.flush()
+
+        self.invite_csv.write("SEQUENTIAL\n")
+        for caller, callee in zip(self.callers, self.callees):
+            if self.use_wildcards:
+                wildcard_callee = "sip:{}{}!.*!@{}".format(callee, WILDCARD_DELIMITER, self.domain)
+                caller = "{}{}45678".format(caller, WILDCARD_DELIMITER)
+                callee = "{}{}9877654".format(callee, WILDCARD_DELIMITER)
+                req_uri = "sip:{}@{}".format(callee, self.domain)
+
+                # We want some calls to not include a P-Profile-Key
+                # header, as that's a valid flow
+                if random() > 0.5:
+                    header = "P-Profile-Key:  {}".format(wildcard_callee)
+                else:
+                    header = "X-Dummy-Header: abcd"
+
+                # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
+                # the callee's wildcard, and the caller's P-Profile-Key
+                self.invite_csv.write("{};{};{};{}\n".format(caller, callee, header, req_uri))
+            else:
+                req_uri = "sip:{}@{};user=phone".format(callee, self.domain)
+                self.invite_csv.write("{};{};X-Dummy-Header: abcd;{}\n".format(caller, callee, req_uri))
+        self.invite_csv.flush()
+
+        common_args = ["-default_behaviors", "all,-bye",
+                       # Reconnect up to 2,000 times if we get disconnected (e.g. due
+                       # to Sprout connection recycling) - this was chosen as an
+                       # arbitrarily high number which we're unlikely to hit.
+                       "-max_reconnect", "2000",
+                       # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
+                       "-reconnect_close", "false",
+                       "-reconnect_sleep", "1",
+                       # If SIPp doesn't have standard input (e.g. when run through
+                       # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
+                       "-nostdin",
+                       "-recv_timeout", "20s",
+                       # Allow multiple parallel connections
+                       "-t", "tn",
+                       "-max_socket", "1000"]
+
+        if self.use_ipv6:
+            # To send traffic to an IPv6 system, we need to pass SIPp the system's IPv6
+            # address. There's no nice, portable way to do this, so parse ifconfig's
+            # output.
+            #
+            # We could use https://pypi.python.org/pypi/netifaces here, but that would
+            # introduce an extra dependency.
+            ipv6_addr = check_output("ifconfig eth0 | grep inet6 | grep Global | grep -Eo \"[a-f0-9]{4}:[a-f0-9:]+\" | head -n 1", shell=True).strip()
+            common_args += ["-i", ipv6_addr]
+
+        common_originating_args = common_args + ["-key", "home_domain", self.domain]
+
+        if self.use_aka:
+            initial_reg_xml = "aka_initial_register.xml"
+            re_reg_xml = "aka_re_register.xml"
+        else:
+            initial_reg_xml = "digest_register.xml"
+            re_reg_xml = "digest_register.xml"
+
+        initial_reg_duration = len(self.users_to_register)/self.initial_reg_rate
+        initial_reg_timeout = "{}s".format(initial_reg_duration + 120)
+
+        self.initial_reg_cmd = [SIPP_BIN,
+                           "-sf", SCRIPTS_DIR + initial_reg_xml,
+                           "-inf", self.register_csv.name,
+                           "-trace_err", "-error_file", self.initial_reg_errors,
+                           "-timeout", initial_reg_timeout,
+                           "-r", str(self.initial_reg_rate),
+                           "-m", str(len(self.users_to_register))] + common_originating_args + [self.icscf_target]
+
+        self.re_reg_cmd = [SIPP_BIN,
+                      "-sf", SCRIPTS_DIR + re_reg_xml,
+                      "-inf", self.register_csv.name,
+                      "-trace_err", "-error_file", self.re_reg_errors,
+                      "-trace_stat", "-stf", self.re_reg_stats,
+                      "-timeout", self.sipp_timeout,
+                      "-r", str(self.rps),
+                      "-m", str(self.reg_max)] + common_originating_args + [self.icscf_target]
+
+        if self.use_messages:
+            caller_file = "message_sender.xml"
+            callee_file = "error_message_receiver.xml" if self.use_errors else "message_receiver.xml"
+        else:
+            caller_file = "caller.xml"
+            callee_file = "error_callee.xml" if self.use_errors else "callee.xml"
+
+        self.caller_cmd = [SIPP_BIN,
+                      "-sf", SCRIPTS_DIR + caller_file,
+                      "-inf", self.invite_csv.name,
+                      "-trace_err", "-error_file", self.caller_errors,
+                      "-trace_stat", "-stf", self.caller_stats,
+                      "-timeout", self.sipp_timeout,
+                      "-key", "ccf_ip", self.ccf,
+                      "-r", str(self.cps),
+                      "-d", str(self.call_length_ms),
+                      "-m", str(self.call_max)] + common_originating_args + [self.scscf_target]
+
+        # Callee must listen on port 5082, because this is what's in the Path header in
+        # register.xml.
+
+        if self.use_redirection:
+            callee_file = "callee_redirection.xml"
+
+        self.callee_cmd = [SIPP_BIN,
+                      "-sf", SCRIPTS_DIR + callee_file,
+                      "-trace_err", "-error_file", self.callee_errors,
+                      "-timeout", self.sipp_timeout,
+                      "-p", "5082",
+                      "-m", str(self.call_max)] + common_args
+
+
+    def initial_register(self):
+        if self.sipp_output:
+            proc = Popen(self.initial_reg_cmd)
+        else:
+            proc = Popen(self.initial_reg_cmd, stdout=DEVNULL, stderr=DEVNULL)
+
+        proc.wait()
+        return proc.returncode
+
+
+    def start_load(self):
+        # Redirect output from the re-register script and the callee script to
+        # /dev/null, but show the output of the caller script to allow the user to
+        # monitor progress.
+
+        # Get a SIPp process to do re-registrations, unless all we're making is a single call.
+        if not args.single:
+            self.re_reg_proc = Popen(self.re_reg_cmd, stdout=DEVNULL, stderr=DEVNULL)
+
+        self.callee_proc = Popen(self.callee_cmd, stdout=DEVNULL, stderr=DEVNULL)
+
+        if args.sipp_output and self.index == 0:
+            self.caller_proc = Popen(self.caller_cmd)
+        else:
+            self.caller_proc = Popen(self.caller_cmd, stdout=DEVNULL, stderr=DEVNULL)
+
+
+    def wait_for_completion(self):
+        # Wait for the appropriate number of calls and re-registrations to have been
+        # attempted (and either failed or completed)
+        self.caller_proc.wait()
+
+        if self.re_reg_proc:
+            self.re_reg_proc.wait()
+
+        # Kill the callee SIPp process - it might not naturally terminate (for example,
+        # if not all the attempted calls get through to it, so it never hits its call
+        # limit), and we know it's not doing anything now that caller_proc has
+        # completed.
+        self.callee_proc.kill()
+
+    def get_results_row(self):
+        with open(self.caller_stats) as f:
+            r = DictReader(f, dialect=SIPpstats())
+            # Iterate over the whole file so that `row` is set to the last row
+            for row in r:
+                pass
+            return row
+
+    def get_reg_results_row(self):
+        with open(self.re_reg_stats) as f:
+            r = DictReader(f, dialect=SIPpstats())
+            # Iterate over the whole file so that `row` is set to the last row
+            for row in r:
+                pass
+            return row
+
 
 # Constants - directories and load profile
 
@@ -95,27 +343,19 @@ args = parser.parse_args()
 
 LOG_PREFIX = "/var/log/clearwater-sip-stress/{}_".format(args.log_prefix)
 
-INITIAL_REG_ERRORS = LOG_PREFIX + "initial_reg_errors.log"
-RE_REG_ERRORS = LOG_PREFIX + "re_reg_errors.log"
-CALLER_ERRORS = LOG_PREFIX + "caller_errors.log"
-CALLEE_ERRORS = LOG_PREFIX + "callee_errors.log"
-RE_REG_STATS  = LOG_PREFIX + "re_reg_stats.log"
-CALLER_STATS  = LOG_PREFIX + "caller_stats.log"
-
+# For wildcard IMPU testing, we expect wildcarded IMPUs to prefix the
+# wildcarded part with a specific character. This makes it easy to mock out
+# HSSes and other components which recognise that these are wildcards.
+# We assume that:
+#   - PREFIX$000 will be a distinct IMPU that can be used for registrations
+#   - PREFIX$!.*! is an implicitly-registered wildcard IMPU
+WILDCARD_DELIMITER = "$"
 
 if args.icscf_target is None:
     args.icscf_target = "sprout.{}:5052".format(args.domain)
 
 if args.scscf_target is None:
     args.scscf_target = "sprout.{}:5054".format(args.domain)
-
-# Calculate calls/registers per second based on the input
-RPS = RE_REG_PER_HOUR * args.subscriber_count * args.multiplier / 3600
-CPS = OUTGOING_BHCA * args.subscriber_count * args.multiplier / 3600
-
-# Given the duration, how many registers/calls do we need to make?
-REG_MAX = int(args.duration * 60 * RPS)
-CALL_MAX = int(args.duration * 60 * CPS)
 
 # If all we want is a single call, override the settings to allow that.
 if args.single:
@@ -127,171 +367,66 @@ if args.single:
 SUB_START = args.base_number
 SUB_END = SUB_START + args.subscriber_count
 
-registers = range(SUB_START, SUB_END)
-callers = range(SUB_START, SUB_END, 2)
-callees = range(SUB_START + 1, SUB_END, 2)
+def shard_subscribers(sub_range):
+    SUBS_PER_LOADGEN = 200000
+    shards = []
+    ii = 0
+    while ii < len(sub_range):
+        jj = ii + SUBS_PER_LOADGEN
+        shards.append(sub_range[ii:jj])
+        ii = jj
+    return shards
 
-# Convert the duration into seconds for a SIPp timeout, and add a safety factor
-sipp_timeout = "{}s".format((args.duration * 60) + 120)
+def merge_rows(list_of_rows):
+    combined = {}
+    for row in list_of_rows:
+        for key, value in row.iteritems():
+            pass
+    return combined
 
-initial_reg_duration = args.subscriber_count/args.initial_reg_rate
-initial_reg_timeout = "{}s".format(initial_reg_duration + 120)
+shards = shard_subscribers(range(SUB_START, SUB_END))
 
-# Randomly shuffle the order of registers and calls to reduce the risk of any cache issues
-shuffle(registers)
-shuffle(callers)
-shuffle(callees)
+loadgens = []
 
-# Generate the CSV input files - one for REGISTER messages with one user per
-# line, one for INVITE flows with a caller/callee pair on each line
-register_csv = NamedTemporaryFile(prefix="sipp_register")
-invite_csv = NamedTemporaryFile(prefix="sipp_calls")
-
-# For wildcard IMPU testing, we expect wildcarded IMPUs to prefix the
-# wildcarded part with a specific character. This makes it easy to mock out
-# HSSes and other components which recognise that these are wildcards.
-# We assume that:
-#   - PREFIX$000 will be a distinct IMPU that can be used for registrations
-#   - PREFIX$!.*! is an implicitly-registered wildcard IMPU
-WILDCARD_DELIMITER = "$"
-
-register_csv.write("SEQUENTIAL\n")
-for s in registers:
-    if args.wildcards:
-        register_csv.write("{}{}000\n".format(s, WILDCARD_DELIMITER))
-    else:
-        register_csv.write("{}\n".format(s))
-register_csv.flush()
-
-invite_csv.write("SEQUENTIAL\n")
-for caller, callee in zip(callers, callees):
-    if args.wildcards:
-        wildcard_callee = "sip:{}{}!.*!@{}".format(callee, WILDCARD_DELIMITER, args.domain)
-        caller = "{}{}45678".format(caller, WILDCARD_DELIMITER)
-        callee = "{}{}9877654".format(callee, WILDCARD_DELIMITER)
-        req_uri = "sip:{}@{}".format(callee, args.domain)
-
-        # We want some calls to not include a P-Profile-Key
-        # header, as that's a valid flow
-        if random() > 0.5:
-            header = "P-Profile-Key:  {}".format(wildcard_callee)
-        else:
-            header = "X-Dummy-Header: abcd"
-
-        # Wildcard IMPU matching the caller's wildcard, wildcard IMPU matching
-        # the callee's wildcard, and the caller's P-Profile-Key
-        invite_csv.write("{};{};{};{}\n".format(caller, callee, header, req_uri))
-    else:
-        req_uri = "sip:{}@{};user=phone".format(callee, args.domain)
-        invite_csv.write("{};{};X-Dummy-Header: abcd;{}\n".format(caller, callee, req_uri))
-invite_csv.flush()
-
-null = open("/dev/null", "w+")
-
-ipv6_addr = check_output("ifconfig eth0 | grep inet6 | grep Global | grep -Eo \"[a-f0-9]{4}:[a-f0-9:]+\" | head -n 1", shell=True).strip()
-
-common_args = ["-default_behaviors", "all,-bye",
-               # Reconnect up to 2,000 times if we get disconnected (e.g. due
-               # to Sprout connection recycling) - this was chosen as an
-               # arbitrarily high number which we're unlikely to hit.
-               "-max_reconnect", "2000",
-               # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
-               "-reconnect_close", "false",
-               "-reconnect_sleep", "1",
-               # If SIPp doesn't have standard input (e.g. when run through
-               # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
-               "-nostdin",
-               "-recv_timeout", "20s",
-               # Allow multiple parallel connections
-               "-t", "tn",
-               "-max_socket", "1000"]
-
-if args.ipv6:
-    # To send traffic to an IPv6 system, we need to pass SIPp the system's IPv6
-    # address. There's no nice, portable way to do this, so parse ifconfig's
-    # output.
-    #
-    # We could use https://pypi.python.org/pypi/netifaces here, but that would
-    # introduce an extra dependency.
-    ipv6_addr = check_output("ifconfig eth0 | grep inet6 | grep Global | grep -Eo \"[a-f0-9]{4}:[a-f0-9:]+\" | head -n 1", shell=True).strip()
-    common_args += ["-i", ipv6_addr]
-
-common_originating_args = common_args + ["-key", "home_domain", args.domain]
-
-if args.aka:
-    initial_reg_xml = "aka_initial_register.xml"
-    re_reg_xml = "aka_re_register.xml"
-else:
-    initial_reg_xml = "digest_register.xml"
-    re_reg_xml = "digest_register.xml"
-
-initial_reg_cmd = [SIPP_BIN,
-                   "-sf", SCRIPTS_DIR + initial_reg_xml,
-                   "-inf", register_csv.name,
-                   "-trace_err", "-error_file", INITIAL_REG_ERRORS,
-                   "-timeout", initial_reg_timeout,
-                   "-r", str(args.initial_reg_rate),
-                   "-m", str(args.subscriber_count)] + common_originating_args + [args.icscf_target]
-
-re_reg_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + re_reg_xml,
-              "-inf", register_csv.name,
-              "-trace_err", "-error_file", RE_REG_ERRORS,
-              "-trace_stat", "-stf", RE_REG_STATS,
-              "-timeout", sipp_timeout,
-              "-r", str(RPS),
-              "-m", str(REG_MAX)] + common_originating_args + [args.icscf_target]
-
-if args.messages:
-    caller_file = "message_sender.xml"
-    callee_file = "error_message_receiver.xml" if args.with_errors else "message_receiver.xml"
-else:
-    caller_file = "caller.xml"
-    callee_file = "error_callee.xml" if args.with_errors else "callee.xml"
-
-caller_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + caller_file,
-              "-inf", invite_csv.name,
-              "-trace_err", "-error_file", CALLER_ERRORS,
-              "-trace_stat", "-stf", CALLER_STATS,
-              "-timeout", sipp_timeout,
-              "-key", "ccf_ip", args.ccf,
-              "-r", str(CPS),
-              "-d", str(args.call_length * 1000),
-              "-m", str(CALL_MAX)] + common_originating_args + [args.scscf_target]
-
-# Callee must listen on port 5082, because this is what's in the Path header in
-# register.xml.
-
-if args.with_redirection:
-    callee_file = "callee_redirection.xml"
-
-callee_cmd = [SIPP_BIN,
-              "-sf", SCRIPTS_DIR + callee_file,
-              "-trace_err", "-error_file", CALLEE_ERRORS,
-              "-timeout", sipp_timeout,
-              "-p", "5082",
-              "-m", str(CALL_MAX)] + common_args
+for index, s in enumerate(shards):
+    lg = LoadGenerator(index,
+                       s,
+                       args.domain,
+                       args.duration,
+                       args.call_length * 1000,
+                       args.initial_reg_rate,
+                       args.multiplier,
+                       args.icscf_target,
+                       args.scscf_target,
+                       args.single,
+                       args.aka,
+                       args.ipv6,
+                       args.with_errors,
+                       args.messages,
+                       args.with_redirection,
+                       args.wildcards,
+                       LOG_PREFIX,
+                       args.ccf,
+                       args.sipp_output)
+    loadgens.append(lg)
 
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
 
+initial_reg_duration = args.subscriber_count/args.initial_reg_rate
 print "Starting initial registration, will take {} seconds".format(initial_reg_duration)
 
-if args.sipp_output:
-    proc = Popen(initial_reg_cmd)
-else:
-    proc = Popen(initial_reg_cmd, stdout=null, stderr=null)
-
-proc.wait()
-
-if proc.returncode != 0:
-    print "Initial registration failed - exiting"
-    print "See {} for details of the errors".format(INITIAL_REG_ERRORS)
-    if not args.ignore_initial_reg_failures:
-        exit(proc.returncode)
-else:
-    print "Initial registration succeeded"
+for lg in loadgens:
+    rc = lg.initial_register()
+    if rc == 0:
+        print "Initial registration succeeded"
+    elif args.ignore_initial_reg_failures:
+        print "Initial registration failed - continuing"
+        print "See {} for details of the errors".format(lg.initial_reg_errors)
+    else:
+        print "Initial registration failed - exiting"
+        print "See {} for details of the errors".format(lg.initial_reg_errors)
+        exit(rc)
 
 # If we want to make a pair of registrations then a single call, pause before
 # the call in case the user wants to set anything up.
@@ -303,51 +438,25 @@ if args.single:
 print "Starting test"
 start_time = datetime.now()
 
-# Redirect output from the re-register script and the callee script to
-# /dev/null, but show the output of the caller script to allow the user to
-# monitor progress.
+for lg in loadgens:
+    lg.start_load()
 
-# Get a SIPp process to do re-registrations, unless all we're making is a single call.
-if not args.single:
-    re_reg_proc = Popen(re_reg_cmd, stdout=null, stderr=null)
-
-callee_proc = Popen(callee_cmd, stdout=null, stderr=null)
-
-if args.sipp_output:
-    caller_proc = Popen(caller_cmd)
-else:
-    caller_proc = Popen(caller_cmd, stdout=null, stderr=null)
-
-# Wait for the appropriate number of calls and re-registrations to have been
-# attempted (and either failed or completed)
-caller_proc.wait()
-
-if not args.single:
-    re_reg_proc.wait()
-
-# Kill the callee SIPp process - it might not naturally terminate (for example,
-# if not all the attempted calls get through to it, so it never hits its call
-# limit), and we know it's not doing anything now that caller_proc has
-# completed.
-callee_proc.kill()
+for lg in loadgens:
+    lg.wait_for_completion()
 
 print "Test complete"
 end_time = datetime.now()
 
 rc = 0
 
-with open(CALLER_STATS) as f:
-    r = DictReader(f, dialect=SIPpstats())
-    # Iterate over the whole file so that `row` is set to the last row
-    for row in r:
-        pass
+row = merge_rows([lg.get_results_row() for lg in loadgens])
 
-    call_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
+call_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
 
-    if not args.messages:
-        hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
-        rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
-        print """
+if not args.messages:
+    hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
+    rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
+    print """
 Elapsed time: {}
 Start: {}
 End: {}
@@ -369,42 +478,42 @@ Average time from INVITE to 180 Ringing: {} ms
 # of calls with 500-1000ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 1000-2000ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 2000+ms from INVITE to 180 Ringing: {} ({}%)""".format(
-        row['ElapsedTime(C)'],
-        start_time,
-        end_time,
-        row['TotalCallCreated'],
-        row['SuccessfulCall(C)'],
-        call_success_rate,
-        row['FailedCall(C)'],
-        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
-        row['Retransmissions(C)'],
-        rtt,
-        row['ResponseTimeRepartition1_<2'],
-        100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<10'],
-        100* float(row['ResponseTimeRepartition1_<10']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<20'],
-        100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<50'],
-        100* float(row['ResponseTimeRepartition1_<50']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<100'],
-        100* float(row['ResponseTimeRepartition1_<100']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<200'],
-        100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<500'],
-        100* float(row['ResponseTimeRepartition1_<500']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<1000'],
-        100* float(row['ResponseTimeRepartition1_<1000']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_<2000'],
-        100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
-        row['ResponseTimeRepartition1_>=2000'],
-        100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
-    
-        if args.target_latency and rtt > args.target_latency:
-            rc = 2
+    row['ElapsedTime(C)'],
+    start_time,
+    end_time,
+    row['TotalCallCreated'],
+    row['SuccessfulCall(C)'],
+    call_success_rate,
+    row['FailedCall(C)'],
+    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+    row['Retransmissions(C)'],
+    rtt,
+    row['ResponseTimeRepartition1_<2'],
+    100* float(row['ResponseTimeRepartition1_<2']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<10'],
+    100* float(row['ResponseTimeRepartition1_<10']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<20'],
+    100* float(row['ResponseTimeRepartition1_<20']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<50'],
+    100* float(row['ResponseTimeRepartition1_<50']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<100'],
+    100* float(row['ResponseTimeRepartition1_<100']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<200'],
+    100* float(row['ResponseTimeRepartition1_<200']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<500'],
+    100* float(row['ResponseTimeRepartition1_<500']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<1000'],
+    100* float(row['ResponseTimeRepartition1_<1000']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_<2000'],
+    100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
+    row['ResponseTimeRepartition1_>=2000'],
+    100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
 
-    else:
-        print """
+    if args.target_latency and rtt > args.target_latency:
+        rc = 2
+
+else:
+    print """
 Elapsed time: {}
 Start: {}
 End: {}
@@ -413,30 +522,26 @@ Total MESSAGE flows: {}
 Successful MESSAGE flows: {} ({}%)
 Failed MESSAGE flows: {} ({}%)
 """.format(
-        row['ElapsedTime(C)'],
-        start_time,
-        end_time,
-        row['TotalCallCreated'],
-        row['SuccessfulCall(C)'],
-        call_success_rate,
-        row['FailedCall(C)'],
-        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']))
- 
+    row['ElapsedTime(C)'],
+    start_time,
+    end_time,
+    row['TotalCallCreated'],
+    row['SuccessfulCall(C)'],
+    call_success_rate,
+    row['FailedCall(C)'],
+    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']))
 
-    if args.target_call_success_rate > call_success_rate:
-        rc = 1
+
+if args.target_call_success_rate > call_success_rate:
+    rc = 1
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
-    with open(RE_REG_STATS) as f:
-        r = DictReader(f, dialect=SIPpstats())
-        # Iterate over the whole file so that `row` is set to the last row
-        for row in r:
-            pass
+    row = merge_rows([lg.get_reg_results_row() for lg in loadgens])
 
-        reg_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
-        hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
-        rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
-        print """
+    reg_success_rate = 100 * float(row['SuccessfulCall(C)']) / float(row['TotalCallCreated'])
+    hours, mins, secs, nanoseconds = map(int, row['ResponseTime1(C)'].split(":"))
+    rtt = (nanoseconds / 1000.0) + (secs * 1000.0)
+    print """
 Total re-REGISTERs: {}
 Successful re-REGISTERs: {} ({}%)
 Failed re-REGISTERS: {} ({}%)
@@ -444,16 +549,16 @@ Failed re-REGISTERS: {} ({}%)
 REGISTER retransmissions: {}
 
 Average time from REGISTER to 200 OK: {} ms""".format(
-        row['TotalCallCreated'],
-        row['SuccessfulCall(C)'],
-        reg_success_rate,
-        row['FailedCall(C)'],
-        100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
-        row['Retransmissions(C)'],
-        rtt)
+    row['TotalCallCreated'],
+    row['SuccessfulCall(C)'],
+    reg_success_rate,
+    row['FailedCall(C)'],
+    100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+    row['Retransmissions(C)'],
+    rtt)
 
-        if args.target_reg_success_rate > reg_success_rate:
-            rc = 3
+    if args.target_reg_success_rate > reg_success_rate:
+        rc = 3
 
 print "\nLog files at {}*".format(LOG_PREFIX)
 
