@@ -10,7 +10,7 @@
 	From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
 	Content-Length: 0
 	Require: Path
-	Path: <sip:[local_ip]:5082;transport=tcp;lr>
+	Path: <sip:[local_ip]:[pcscf_port];transport=tcp;lr>
 	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
 	Supported: path
 	To: <sip:[field0]@[home_domain]>
@@ -40,7 +40,7 @@
 	From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
 	Content-Length: 0
 	Require: Path
-	Path: <sip:[local_ip]:5082;transport=tcp;lr>
+	Path: <sip:[local_ip]:[pcscf_port];transport=tcp;lr>
 	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
 	Supported: path
 	To: <sip:[field0]@[home_domain]>

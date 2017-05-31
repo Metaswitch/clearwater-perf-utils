@@ -90,6 +90,7 @@ parser.add_argument('--target-reg-success-rate', help='Target registration succe
 parser.add_argument('--ccf', help='IP or hostname of the CCF to use.', type=str, default="0.0.0.0")
 parser.add_argument('--wildcards', help='Make the call flows involve wildcard IMPUs', action='store_const', const=True, default=False)
 parser.add_argument('--ipv6', help="Send traffic to an IPv6 system", action='store_const', const=True, default=False)
+parser.add_argument('--listen-port', help='P-CSCF port to include in path headers and listen on', type=str, default="5082")
 
 args = parser.parse_args()
 
@@ -195,13 +196,15 @@ common_args = ["-default_behaviors", "all,-bye",
                # to Sprout connection recycling) - this was chosen as an
                # arbitrarily high number which we're unlikely to hit.
                "-max_reconnect", "2000",
-               # Keep calls alive when we reconnect, and try and reconnect very quickly (1ms).
+               # Keep calls alive when we reconnect, and try and reconnect quickly.
                "-reconnect_close", "false",
-               "-reconnect_sleep", "1",
+               "-reconnect_sleep", "100",
                # If SIPp doesn't have standard input (e.g. when run through
                # Jenkins), it uses 100% CPU unless you pass the -nostdin flag.
                "-nostdin",
                "-recv_timeout", "20s",
+               "-watchdog_reset", "1m",
+               "-watchdog_minor_maxtriggers", "300",
                # Allow multiple parallel connections
                "-t", "tn",
                "-max_socket", "1000"]
@@ -230,6 +233,7 @@ initial_reg_cmd = [SIPP_BIN,
                    "-inf", register_csv.name,
                    "-trace_err", "-error_file", INITIAL_REG_ERRORS,
                    "-timeout", initial_reg_timeout,
+                   "-key", "pcscf_port", args.listen_port,
                    "-r", str(args.initial_reg_rate),
                    "-m", str(args.subscriber_count)] + common_originating_args + [args.icscf_target]
 
@@ -239,6 +243,7 @@ re_reg_cmd = [SIPP_BIN,
               "-trace_err", "-error_file", RE_REG_ERRORS,
               "-trace_stat", "-stf", RE_REG_STATS,
               "-timeout", sipp_timeout,
+              "-key", "pcscf_port", args.listen_port,
               "-r", str(RPS),
               "-m", str(REG_MAX)] + common_originating_args + [args.icscf_target]
 
@@ -260,9 +265,6 @@ caller_cmd = [SIPP_BIN,
               "-d", str(args.call_length * 1000),
               "-m", str(CALL_MAX)] + common_originating_args + [args.scscf_target]
 
-# Callee must listen on port 5082, because this is what's in the Path header in
-# register.xml.
-
 if args.with_redirection:
     callee_file = "callee_redirection.xml"
 
@@ -270,7 +272,7 @@ callee_cmd = [SIPP_BIN,
               "-sf", SCRIPTS_DIR + callee_file,
               "-trace_err", "-error_file", CALLEE_ERRORS,
               "-timeout", sipp_timeout,
-              "-p", "5082",
+              "-p", args.listen_port,
               "-m", str(CALL_MAX)] + common_args
 
 # Do initial registrations as quickly as possible for test setup - this is an
