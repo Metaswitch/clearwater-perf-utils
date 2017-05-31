@@ -360,7 +360,7 @@ Failed calls: {} ({}%)
 
 Retransmissions: {}
 
-Average time from INVITE to 180 Ringing: {} ms
+Average time from INVITE to 180 Ringing: {}ms
 # of calls with 0-2ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 2-10ms from INVITE to 180 Ringing: {} ({}%)
 # of calls with 10-20ms from INVITE to 180 Ringing: {} ({}%)
@@ -401,8 +401,10 @@ Average time from INVITE to 180 Ringing: {} ms
         100* float(row['ResponseTimeRepartition1_<2000']) / float(row['TotalCallCreated']),
         row['ResponseTimeRepartition1_>=2000'],
         100* float(row['ResponseTimeRepartition1_>=2000']) / float(row['TotalCallCreated']))
-    
+
         if args.target_latency and rtt > args.target_latency:
+            print("Failed: average latency {}ms exceeds target latency "
+                  "{}ms!".format(rtt, args.target_latency))
             rc = 2
 
     else:
@@ -426,6 +428,8 @@ Failed MESSAGE flows: {} ({}%)
  
 
     if args.target_call_success_rate > call_success_rate:
+        print("Failed: call success rate {}% is lower than target "
+              "{}%!".format(call_success_rate, args.target_call_success_rate))
         rc = 1
 
 if not args.single: #  we didn't do re-registrations in this case, so won't have any stats
@@ -445,7 +449,7 @@ Failed re-REGISTERS: {} ({}%)
 
 REGISTER retransmissions: {}
 
-Average time from REGISTER to 200 OK: {} ms""".format(
+Average time from REGISTER to 200 OK: {}ms""".format(
         row['TotalCallCreated'],
         row['SuccessfulCall(C)'],
         reg_success_rate,
@@ -455,6 +459,8 @@ Average time from REGISTER to 200 OK: {} ms""".format(
         rtt)
 
         if args.target_reg_success_rate > reg_success_rate:
+            print("Failed: re-registration success rate {}% is lower than target "
+                  "{}%!".format(reg_success_rate, args.target_reg_success_rate))
             rc = 3
 
 print "\nLog files at {}*".format(LOG_PREFIX)
