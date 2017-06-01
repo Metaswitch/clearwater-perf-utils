@@ -11,7 +11,7 @@
   Content-Length: 0
   Require: Path
   Path: <sip:[local_ip]:[pcscf_port];transport=tcp;lr>
-  P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f[call_number]
+  P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3e[call_number]
   Supported: path
   To: <sip:[field0]@[home_domain]>
   Route: <sip:icscf@[remote_ip];lr>
