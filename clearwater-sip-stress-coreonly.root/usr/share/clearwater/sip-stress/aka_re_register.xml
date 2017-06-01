@@ -5,27 +5,27 @@
   <send retrans="500">
     <![CDATA[
 
-	REGISTER sip:[home_domain] SIP/2.0
-	Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
-	From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
-	Content-Length: 0
-	Require: Path
-	Path: <sip:[local_ip]:[pcscf_port];transport=tcp;lr>
-	P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f
-	Supported: path
-	To: <sip:[field0]@[home_domain]>
-	Route: <sip:icscf@[remote_ip];lr>
-	Max-Forwards: 70
-	Contact: <sip:[field0]@[local_ip]:[local_port]>;reg-id=1;+sip.instance="<urn:uuid:00000000-0000-0000-0000-000000000001>"
-	Call-ID: [call_id]
-	CSeq: 1 REGISTER
-	Expires: 3600
-	Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, UPDATE, INFO, REFER, NOTIFY, MESSAGE, PRACK
-	Supported: path, gruu
-	Authorization: Digest username="[field0]@[home_domain]",realm="[home_domain]",uri="sip:[home_domain]",nonce="",response="",algorithm=AKAv1-MD5,integrity-protected=yes
-	User-Agent: 00-00000-0000000000000 Phone IMS 10.0
-	P-Access-Network-Info: IEEE-802.11;i-wlan-node-id=000000000000;country=GB;local-time-zone="2016-01-01T00:00:00-00:00"
-	P-Visited-Network-ID: [home_domain]
+  REGISTER sip:[home_domain] SIP/2.0
+  Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+  From: <sip:[field0]@[home_domain]>;tag=[pid]SIPpTag00[call_number]
+  Content-Length: 0
+  Require: Path
+  Path: <sip:[local_ip]:[pcscf_port];transport=tcp;lr>
+  P-Charging-Vector: icid-value=d4511351a7e24c5ff16243bac827fc3f[call_number]
+  Supported: path
+  To: <sip:[field0]@[home_domain]>
+  Route: <sip:icscf@[remote_ip];lr>
+  Max-Forwards: 70
+  Contact: <sip:[field0]@[local_ip]:[local_port]>;reg-id=1;+sip.instance="<urn:uuid:00000000-0000-0000-0000-000000000001>"
+  Call-ID: [call_id]
+  CSeq: 1 REGISTER
+  Expires: 3600
+  Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, UPDATE, INFO, REFER, NOTIFY, MESSAGE, PRACK
+  Supported: path, gruu
+  Authorization: Digest username="[field0]@[home_domain]",realm="[home_domain]",uri="sip:[home_domain]",nonce="",response="",algorithm=AKAv1-MD5,integrity-protected=yes
+  User-Agent: 00-00000-0000000000000 Phone IMS 10.0
+  P-Access-Network-Info: IEEE-802.11;i-wlan-node-id=000000000000;country=GB;local-time-zone="2016-01-01T00:00:00-00:00"
+  P-Visited-Network-ID: [home_domain]
     ]]>
   </send>
 
