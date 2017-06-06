@@ -288,8 +288,7 @@ else:
 proc.wait()
 
 if proc.returncode != 0:
-    print "Initial registration failed - exiting"
-    print "See {} for details of the errors".format(INITIAL_REG_ERRORS)
+    print "Initial registration failed - see {} for details of the errors".format(INITIAL_REG_ERRORS)
     if not args.ignore_initial_reg_failures:
         exit(proc.returncode)
 else:
