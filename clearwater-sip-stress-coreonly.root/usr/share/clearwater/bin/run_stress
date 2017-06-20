@@ -356,6 +356,7 @@ End: {}
 Total calls: {}
 Successful calls: {} ({}%)
 Failed calls: {} ({}%)
+Unfinished calls: {}
 
 Retransmissions: {}
 
@@ -378,6 +379,7 @@ Average time from INVITE to 180 Ringing: {}ms
         call_success_rate,
         row['FailedCall(C)'],
         100* float(row['FailedCall(C)']) / float(row['TotalCallCreated']),
+        int(row['TotalCallCreated']) - int(row['SuccessfulCall(C)']) - int(row['FailedCall(C)']),
         row['Retransmissions(C)'],
         rtt,
         row['ResponseTimeRepartition1_<2'],
