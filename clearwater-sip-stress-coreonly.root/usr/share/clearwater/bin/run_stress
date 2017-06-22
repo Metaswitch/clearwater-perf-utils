@@ -273,7 +273,7 @@ callee_cmd = [SIPP_BIN,
               "-trace_err", "-error_file", CALLEE_ERRORS,
               "-timeout", sipp_timeout,
               "-p", args.listen_port,
-              "-m", str(CALL_MAX)] + common_args
+              "-m", str(CALL_MAX) * 3] + common_args
 
 # Do initial registrations as quickly as possible for test setup - this is an
 # unrealistic load profile, so no need for measurements yet.
