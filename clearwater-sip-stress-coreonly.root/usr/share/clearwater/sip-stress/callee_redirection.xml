@@ -31,7 +31,7 @@
       Content-Length: [len]
       [last_P-Charging-Vector:]
       P-Asserted-Identity: sip:[$dn]@[$home_domain]
-      Contact: <sip:8888000002424@ame22.clearwater.test>;q=0.2,<sip:8888000001313@ame22.clearwater.test>;q=0.1,<sip:8888000003535@ame22.clearwater.test>;q=0.3
+      Contact: <sip:+8888000002424@bgcf.clearwater.test>;q=0.2,<sip:+8888000001313@bgcf.clearwater.test>;q=0.1,<sip:+8888000003535@bgcf.clearwater.test>;q=0.3
       Record-Route: <sip:[local_ip]:[local_port];transport=[transport];lr>
       [last_Record-Route:]
       Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,INFO,REFER,NOTIFY,MESSAGE,PRACK
@@ -80,7 +80,7 @@
       Content-Length: [len]
       [last_P-Charging-Vector:]
       P-Asserted-Identity: sip:[$dn]@[$home_domain]
-      Contact: <sip:8888000002424@ame22.clearwater.test>;q=0.2,<sip:8888000001313@ame22.clearwater.test>;q=0.4,<sip:8888000003535@ame22.clearwater.test>;q=0.3
+      Contact: <sip:+8888000002424@bgcf.clearwater.test>;q=0.2,<sip:+8888000001313@bgcf.clearwater.test>;q=0.4,<sip:+8888000003535@bgcf.clearwater.test>;q=0.3
       Record-Route: <sip:[local_ip]:[local_port];transport=[transport];lr>
       [last_Record-Route:]
       Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,INFO,REFER,NOTIFY,MESSAGE,PRACK
