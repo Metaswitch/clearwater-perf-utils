@@ -12,10 +12,10 @@ sipp/configure: sipp/configure.ac
 sipp/Makefile: sipp/configure
 	cd ./sipp && ./configure
 
-sipp/sipp_coreonly: sipp/Makefile sipp/src/*
+sipp/sipp_coreonly: sipp/Makefile $(shell find sipp/src -type f)
 	cd ./sipp && make && mv sipp sipp_coreonly
 
-sipp/sipp_static: sipp/Makefile sipp/src/*
+sipp/sipp_static: sipp/Makefile $(shell find sipp/src -type f)
 	cd ./sipp && make sipp_static
 
 clean:
